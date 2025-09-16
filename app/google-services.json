@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "676070834071",
+    "project_id": "fantrix-7ae3f",
+    "storage_bucket": "fantrix-7ae3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676070834071:android:064e31583ddb2693db8ed2",
+        "android_client_info": {
+          "package_name": "com.example.fantrix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjalT5Kt2SQV2tWmcuxWnm_XYn67jYnGI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
