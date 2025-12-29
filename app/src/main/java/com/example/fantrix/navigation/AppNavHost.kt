@@ -8,6 +8,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.fantrix.screens.*
+import com.example.fantrix.screens.live.LiveMatchesScreen
+import com.example.fantrix.screens.live.LivePlayerScreen
 import com.example.fantrix.Sports.FootballMatchDetails.FootballMatchDetailsScreen
 
 @Composable
@@ -51,10 +53,24 @@ fun AppNavHost(
             ProfileScreen(navController)
         }
 
-        composable("live_matches") {
-            LiveMatchesScreen()
+        composable("edit_profile") {
+            EditProfileScreen(navController)
         }
 
+        composable("settings") {
+            SettingsScreen(navController)
+        }
+
+        /* ---------- LIVE MATCH FLOW ---------- */
+        composable("live_matches") {
+            LiveMatchesScreen(navController)
+        }
+
+        composable("live_player") {
+            LivePlayerScreen()
+        }
+
+        /* ---------- OTHER SCREENS ---------- */
         composable("watch_party") {
             WatchPartyScreen()
         }
@@ -71,7 +87,7 @@ fun AppNavHost(
             NotificationsScreen()
         }
 
-        /* ---------- MATCH DETAILS (FIXED) ---------- */
+        /* ---------- MATCH DETAILS ---------- */
         composable(
             route = "matchDetails/{fixtureId}",
             arguments = listOf(
@@ -81,8 +97,7 @@ fun AppNavHost(
             )
         ) { backStackEntry ->
             val fixtureId =
-                backStackEntry.arguments?.getInt("fixtureId")
-                    ?: return@composable   // ⛔ prevents crash
+                backStackEntry.arguments?.getInt("fixtureId") ?: return@composable
 
             FootballMatchDetailsScreen(
                 fixtureId = fixtureId

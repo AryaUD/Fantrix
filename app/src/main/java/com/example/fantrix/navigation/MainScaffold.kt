@@ -12,7 +12,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.example.fantrix.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -26,17 +27,30 @@ fun MainScaffold() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
-    val user = auth.currentUser
+    val firestore = FirebaseFirestore.getInstance()
 
-    var profileUrl by remember { mutableStateOf<String?>(null) }
+    val user by remember { mutableStateOf(auth.currentUser) }
 
-    // 🔹 Load profile image once
+    var profileImage by remember { mutableStateOf("") }
+
+    /* ---------------- AUTH GUARD ---------------- */
     LaunchedEffect(user) {
-        if (user != null) {
-            db.collection("users").document(user.uid).get()
-                .addOnSuccessListener {
-                    profileUrl = it.getString("profilePictureUrl")
+        if (user == null) {
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    /* -------- REAL-TIME PROFILE IMAGE -------- */
+    LaunchedEffect(user?.uid) {
+        user?.uid?.let { uid ->
+            firestore.collection("users")
+                .document(uid)
+                .addSnapshotListener { doc, _ ->
+                    if (doc != null && doc.exists()) {
+                        profileImage = doc.getString("profileImage") ?: ""
+                    }
                 }
         }
     }
@@ -56,31 +70,35 @@ fun MainScaffold() {
                     title = { Text("Fantrix") },
                     actions = {
 
-                        // 🔔 Notifications
-                        IconButton(onClick = {
-                            navController.navigate("notifications")
-                        }) {
+                        IconButton(
+                            onClick = {
+                                navController.navigate("notifications") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        ) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                         }
 
-                        // 👤 Profile
-                        IconButton(onClick = {
-                            navController.navigate("profile")
-                        }) {
-                            if (!profileUrl.isNullOrEmpty()) {
-                                AsyncImage(
-                                    model = profileUrl,
-                                    contentDescription = "Profile",
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .padding(4.dp)
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = "Profile"
-                                )
+                        IconButton(
+                            onClick = {
+                                navController.navigate("profile") {
+                                    launchSingleTop = true
+                                }
                             }
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    if (profileImage.isNotEmpty())
+                                        profileImage
+                                    else
+                                        R.drawable.default_avatar
+                                ),
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .padding(4.dp)
+                            )
                         }
                     }
                 )
@@ -93,35 +111,56 @@ fun MainScaffold() {
 
                     NavigationBarItem(
                         selected = currentRoute == "live_matches",
-                        onClick = { navController.navigate("live_matches") },
+                        onClick = {
+                            navController.navigate("live_matches") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.LiveTv, null) },
                         label = { Text("Live") }
                     )
 
                     NavigationBarItem(
                         selected = currentRoute == "watch_party",
-                        onClick = { navController.navigate("watch_party") },
+                        onClick = {
+                            navController.navigate("watch_party") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.People, null) },
                         label = { Text("Party") }
                     )
 
                     NavigationBarItem(
                         selected = currentRoute == "home",
-                        onClick = { navController.navigate("home") },
+                        onClick = {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.Home, null) },
                         label = { Text("Home") }
                     )
 
                     NavigationBarItem(
                         selected = currentRoute == "chat",
-                        onClick = { navController.navigate("chat") },
+                        onClick = {
+                            navController.navigate("chat") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.Chat, null) },
                         label = { Text("Chat") }
                     )
 
                     NavigationBarItem(
                         selected = currentRoute == "live_feed",
-                        onClick = { navController.navigate("live_feed") },
+                        onClick = {
+                            navController.navigate("live_feed") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.List, null) },
                         label = { Text("Feed") }
                     )

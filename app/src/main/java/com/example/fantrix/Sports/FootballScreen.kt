@@ -54,7 +54,6 @@ fun FootballScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
 
             LeagueFilter(

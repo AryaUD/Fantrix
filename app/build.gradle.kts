@@ -63,10 +63,21 @@ android {
 
 dependencies {
 
+    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+
+    // Media3 ExoPlayer
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-ui:1.2.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
+
     implementation("androidx.compose.material:material-icons-extended")
+
+    implementation ("androidx.lifecycle:lifecycle-process:2.8.6")
 
     // Coil Compose for AsyncImage
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
@@ -91,6 +102,11 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.1"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    // Cloudinary
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
