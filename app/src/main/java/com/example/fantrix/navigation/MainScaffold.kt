@@ -36,7 +36,7 @@ fun MainScaffold() {
     /* ---------------- AUTH GUARD ---------------- */
     LaunchedEffect(user) {
         if (user == null) {
-            navController.navigate("login") {
+            navController.navigate("onboarding") {
                 popUpTo(0) { inclusive = true }
             }
         }
@@ -55,10 +55,9 @@ fun MainScaffold() {
         }
     }
 
+    // ✅ ONLY REAL ROUTES
     val hideBars = currentRoute in listOf(
-        "splash",
-        "login",
-        "signup",
+        "onboarding",
         "userDetails",
         "sportsPreference"
     )

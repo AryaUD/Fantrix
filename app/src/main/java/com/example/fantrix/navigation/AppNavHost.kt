@@ -19,21 +19,13 @@ fun AppNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "splash",
+        startDestination = "onboarding",   // ✅ App now starts with onboarding
         modifier = modifier
     ) {
 
-        /* ---------- AUTH FLOW ---------- */
-        composable("splash") {
-            SplashScreen(navController)
-        }
-
-        composable("login") {
-            LoginScreen(navController)
-        }
-
-        composable("signup") {
-            SignupScreen(navController)
+        /* ---------- ONBOARDING FLOW ---------- */
+        composable("onboarding") {
+            OnboardingFlowScreen(navController)
         }
 
         composable("userDetails") {
