@@ -30,7 +30,7 @@ fun SettingsScreen(navController: NavController) {
                     FirebaseAuth.getInstance().signOut()
 
                     // 🚀 Navigate to login & clear EVERYTHING
-                    navController.navigate("login") {
+                    navController.navigate("onboarding") {
                         popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }

@@ -62,6 +62,9 @@ android {
 }
 
 dependencies {
+
+    implementation("com.cloudinary:cloudinary-android:2.3.1")
+
     // Google Sign-In - Updated to a valid version
     implementation("com.google.android.gms:play-services-auth:21.0.0")  // Changed from 21.0.1
 

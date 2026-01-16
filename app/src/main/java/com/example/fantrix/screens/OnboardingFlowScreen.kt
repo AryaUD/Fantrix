@@ -71,7 +71,8 @@ fun OnboardingFlowScreen(navController: NavController) {
         stage = OnboardingStage.WELCOME
     }
 
-    /** GOOGLE SIGN IN **/
+    /* ---------------- GOOGLE SIGN IN ---------------- */
+
     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id))
         .requestEmail()
@@ -92,14 +93,27 @@ fun OnboardingFlowScreen(navController: NavController) {
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener { authResult ->
                         isGoogleLoading = false
+
                         if (authResult.isSuccessful) {
-                            navController.navigate("home") {
-                                popUpTo("onboarding") { inclusive = true }
+
+                            val isNewUser =
+                                authResult.result?.additionalUserInfo?.isNewUser == true
+
+                            if (isNewUser) {
+                                navController.navigate("userDetails") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate("home") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
                             }
+
                         } else {
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
-                                    authResult.exception?.localizedMessage ?: "Google login failed"
+                                    authResult.exception?.localizedMessage
+                                        ?: "Google login failed"
                                 )
                             }
                         }
@@ -107,11 +121,15 @@ fun OnboardingFlowScreen(navController: NavController) {
             } catch (e: Exception) {
                 isGoogleLoading = false
                 coroutineScope.launch {
-                    snackbarHostState.showSnackbar(e.localizedMessage ?: "Google login failed")
+                    snackbarHostState.showSnackbar(
+                        e.localizedMessage ?: "Google login failed"
+                    )
                 }
             }
         }
     }
+
+    /* ---------------- UI ---------------- */
 
     val fantrixOffsetY by animateDpAsState(
         targetValue = if (stage == OnboardingStage.SPLASH) 0.dp else (-120).dp,
@@ -141,6 +159,7 @@ fun OnboardingFlowScreen(navController: NavController) {
                 Modifier.fillMaxSize().padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+
                 Spacer(Modifier.height(260.dp))
 
                 Text(
@@ -151,7 +170,8 @@ fun OnboardingFlowScreen(navController: NavController) {
                     modifier = Modifier.offset(y = fantrixOffsetY)
                 )
 
-                /** WELCOME **/
+                /* ---------------- WELCOME ---------------- */
+
                 AnimatedVisibility(stage == OnboardingStage.WELCOME) {
                     Column(Modifier.fillMaxWidth().padding(top = 200.dp)) {
 
@@ -184,7 +204,8 @@ fun OnboardingFlowScreen(navController: NavController) {
                     }
                 }
 
-                /** AUTH CARD **/
+                /* ---------------- AUTH CARD ---------------- */
+
                 AnimatedVisibility(stage == OnboardingStage.LOGIN || stage == OnboardingStage.SIGN_UP) {
 
                     Card(
@@ -198,7 +219,6 @@ fun OnboardingFlowScreen(navController: NavController) {
 
                             Text(
                                 "← Back",
-                                color = Color.Black,
                                 modifier = Modifier.align(Alignment.Start)
                                     .clickable { stage = OnboardingStage.WELCOME }
                             )
@@ -206,7 +226,10 @@ fun OnboardingFlowScreen(navController: NavController) {
                             Spacer(Modifier.height(8.dp))
 
                             Text(
-                                if (stage == OnboardingStage.LOGIN) "Login to your account" else "Create a new account",
+                                if (stage == OnboardingStage.LOGIN)
+                                    "Login to your account"
+                                else
+                                    "Create a new account",
                                 fontSize = 22.sp
                             )
 
@@ -230,11 +253,18 @@ fun OnboardingFlowScreen(navController: NavController) {
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                                 singleLine = true,
-                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                visualTransformation =
+                                    if (passwordVisible) VisualTransformation.None
+                                    else PasswordVisualTransformation(),
                                 trailingIcon = {
-                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    IconButton(onClick = {
+                                        passwordVisible = !passwordVisible
+                                    }) {
                                         Icon(
-                                            if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                            if (passwordVisible)
+                                                Icons.Filled.Visibility
+                                            else
+                                                Icons.Filled.VisibilityOff,
                                             contentDescription = null
                                         )
                                     }
@@ -248,7 +278,9 @@ fun OnboardingFlowScreen(navController: NavController) {
 
                                     if (email.isBlank() || password.isBlank()) {
                                         coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Email and password cannot be empty")
+                                            snackbarHostState.showSnackbar(
+                                                "Email and password cannot be empty"
+                                            )
                                         }
                                         return@Button
                                     }
@@ -267,7 +299,8 @@ fun OnboardingFlowScreen(navController: NavController) {
                                                 } else {
                                                     coroutineScope.launch {
                                                         snackbarHostState.showSnackbar(
-                                                            task.exception?.localizedMessage ?: "Login failed"
+                                                            task.exception?.localizedMessage
+                                                                ?: "Login failed"
                                                         )
                                                     }
                                                 }
@@ -285,7 +318,8 @@ fun OnboardingFlowScreen(navController: NavController) {
                                                 } else {
                                                     coroutineScope.launch {
                                                         snackbarHostState.showSnackbar(
-                                                            task.exception?.localizedMessage ?: "Signup failed"
+                                                            task.exception?.localizedMessage
+                                                                ?: "Signup failed"
                                                         )
                                                     }
                                                 }
@@ -295,20 +329,35 @@ fun OnboardingFlowScreen(navController: NavController) {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 if (isLoading)
-                                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 else
                                     Text("Continue")
                             }
 
                             Spacer(Modifier.height(14.dp))
 
+                            /* -------- GOOGLE (FORCE ACCOUNT CHOOSER) -------- */
+
                             OutlinedButton(
-                                onClick = { googleLauncher.launch(googleClient.signInIntent) },
+                                onClick = {
+                                    isGoogleLoading = true
+                                    googleClient.signOut().addOnCompleteListener {
+                                        isGoogleLoading = false
+                                        googleLauncher.launch(googleClient.signInIntent)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !isGoogleLoading
                             ) {
                                 if (isGoogleLoading) {
-                                    CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                                    CircularProgressIndicator(
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 } else {
                                     Image(
                                         painter = painterResource(R.drawable.ic_google),
@@ -323,10 +372,16 @@ fun OnboardingFlowScreen(navController: NavController) {
                             Spacer(Modifier.height(20.dp))
 
                             Text(
-                                if (stage == OnboardingStage.LOGIN) "Don’t have an account? Sign Up" else "Already have an account? Login",
-                                color = Color.Black,
+                                if (stage == OnboardingStage.LOGIN)
+                                    "Don’t have an account? Sign Up"
+                                else
+                                    "Already have an account? Login",
                                 modifier = Modifier.clickable {
-                                    stage = if (stage == OnboardingStage.LOGIN) OnboardingStage.SIGN_UP else OnboardingStage.LOGIN
+                                    stage =
+                                        if (stage == OnboardingStage.LOGIN)
+                                            OnboardingStage.SIGN_UP
+                                        else
+                                            OnboardingStage.LOGIN
                                 }
                             )
 
