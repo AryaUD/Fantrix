@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.fantrix.R
@@ -71,6 +74,7 @@ fun EditProfileScreen(navController: NavController) {
     }
 
     Scaffold { padding ->
+
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -80,7 +84,7 @@ fun EditProfileScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Text("Edit Profile", style = MaterialTheme.typography.headlineSmall)
+            Text("Edit Profile", fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
             Spacer(Modifier.height(20.dp))
 
@@ -90,12 +94,12 @@ fun EditProfileScreen(navController: NavController) {
                 ),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(110.dp)
+                    .size(120.dp)
                     .clip(CircleShape)
             )
 
             TextButton(onClick = { imagePicker.launch("image/*") }) {
-                Text("Change Profile Photo")
+                Text("Change profile photo")
             }
 
             Spacer(Modifier.height(20.dp))
@@ -103,46 +107,63 @@ fun EditProfileScreen(navController: NavController) {
             OutlinedTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
-                label = { Text("Full Name") },
-                modifier = Modifier.fillMaxWidth()
+                label = { Text("Full name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
-            Text("Favourite Sport")
+            Text("Favourite sport", style = MaterialTheme.typography.labelLarge)
+
             sportsList.forEach { sport ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = favouriteSport == sport,
-                        onClick = { favouriteSport = sport }
-                    )
-                    Text(sport)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    onClick = { favouriteSport = sport }
+                ) {
+                    Row(
+                        Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = favouriteSport == sport,
+                            onClick = { favouriteSport = sport }
+                        )
+                        Text(sport)
+                    }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = aboutMe,
                 onValueChange = { aboutMe = it },
-                label = { Text("About Me") },
+                label = { Text("About me") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3
+                minLines = 3,
+                shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(26.dp))
 
             Button(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 enabled = !loading,
+                shape = RoundedCornerShape(16.dp),
                 onClick = {
                     loading = true
 
                     scope.launch {
                         try {
-                            val imageUrl = selectedImageUri?.let {
+                            val imageUrl: String? = selectedImageUri?.let { uri ->
                                 withContext(Dispatchers.IO) {
-                                    uploadToCloudinary(context, it)
+                                    uploadToCloudinary(context, uri)
                                 }
                             }
 
@@ -174,13 +195,13 @@ fun EditProfileScreen(navController: NavController) {
                     }
                 }
             ) {
-                Text(if (loading) "Saving..." else "Save Changes")
+                Text(if (loading) "Saving..." else "Save changes")
             }
         }
     }
 }
 
-/* ---------------- HELPERS ---------------- */
+/* ---------------- HELPERS (NO ERRORS NOW) ---------------- */
 
 fun isImageUnder1MB(context: Context, uri: Uri): Boolean {
     val size = context.contentResolver

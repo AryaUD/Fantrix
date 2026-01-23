@@ -3,14 +3,11 @@ package com.example.fantrix.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import com.example.fantrix.screens.*
-import com.example.fantrix.screens.live.LiveMatchesScreen
+import com.example.fantrix.screens.LiveMatchesScreen
 import com.example.fantrix.screens.live.LivePlayerScreen
-import com.example.fantrix.Sports.FootballMatchDetails.FootballMatchDetailsScreen
 
 @Composable
 fun AppNavHost(
@@ -19,81 +16,29 @@ fun AppNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "onboarding",   // ✅ App now starts with onboarding
+        startDestination = "onboarding",
         modifier = modifier
     ) {
 
-        /* ---------- ONBOARDING FLOW ---------- */
-        composable("onboarding") {
-            OnboardingFlowScreen(navController)
-        }
+        composable("onboarding") { OnboardingFlowScreen(navController) }
+        composable("userDetails") { UserDetailsScreen(navController) }
+        composable("sportsPreference") { SportsPreferenceScreen(navController) }
+        composable("home") { HomeScreen(navController) }
+        composable("profile") { ProfileScreen(navController) }
+        composable("edit_profile") { EditProfileScreen(navController) }
+        composable("settings") { SettingsScreen(navController) }
 
-        composable("userDetails") {
-            UserDetailsScreen(navController)
-        }
-
-        composable("sportsPreference") {
-            SportsPreferenceScreen(navController)
-        }
-
-        /* ---------- MAIN SCREENS ---------- */
-        composable("home") {
-            HomeScreen(navController)
-        }
-
-        composable("profile") {
-            ProfileScreen(navController)
-        }
-
-        composable("edit_profile") {
-            EditProfileScreen(navController)
-        }
-
-        composable("settings") {
-            SettingsScreen(navController)
-        }
-
-        /* ---------- LIVE MATCH FLOW ---------- */
-        composable("live_matches") {
-            LiveMatchesScreen(navController)
-        }
-
+        // ✅ Live matches
+        composable("live_matches")
+        { LiveMatchesScreen(navController) }
         composable("live_player") {
             LivePlayerScreen()
         }
 
-        /* ---------- OTHER SCREENS ---------- */
-        composable("watch_party") {
-            WatchPartyScreen()
-        }
-
-        composable("chat") {
-            ChatScreen()
-        }
-
-        composable("live_feed") {
-            LiveFeedScreen()
-        }
-
-        composable("notifications") {
-            NotificationsScreen()
-        }
-
-        /* ---------- MATCH DETAILS ---------- */
-        composable(
-            route = "matchDetails/{fixtureId}",
-            arguments = listOf(
-                navArgument("fixtureId") {
-                    type = NavType.IntType
-                }
-            )
-        ) { backStackEntry ->
-            val fixtureId =
-                backStackEntry.arguments?.getInt("fixtureId") ?: return@composable
-
-            FootballMatchDetailsScreen(
-                fixtureId = fixtureId
-            )
-        }
+        composable("watch_party") { WatchPartyScreen() }
+        composable("Arcade") { ArcadeScreen() }
+        composable("live_feed") { LiveFeedScreen() }
+        composable("notifications") { NotificationsScreen() }
+        composable("security") { SecurityScreen() }
     }
 }

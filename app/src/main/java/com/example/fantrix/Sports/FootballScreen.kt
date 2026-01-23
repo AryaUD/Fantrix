@@ -34,11 +34,14 @@ fun FootballScreen(
 
     var selectedLeagueId by remember { mutableStateOf(39) }
 
+    // ✅ NEW FILTER STATES
+    var searchQuery by remember { mutableStateOf("") }
+    var footballType by remember { mutableStateOf("Club") } // Club / International
+    var category by remember { mutableStateOf("Men") } // Men / Women / U19
+
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoading,
-        onRefresh = {
-            footballViewModel.loadFixtures(selectedLeagueId)
-        }
+        onRefresh = { footballViewModel.loadFixtures(selectedLeagueId) }
     )
 
     LaunchedEffect(selectedLeagueId) {
@@ -51,14 +54,27 @@ fun FootballScreen(
             .pullRefresh(pullRefreshState)
     ) {
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
+            // ✅ TOP FILTER BAR
+            FootballTopFilters(
+                searchQuery = searchQuery,
+                onSearchChange = { searchQuery = it },
+                footballType = footballType,
+                onFootballTypeChange = { footballType = it },
+                category = category,
+                onCategoryChange = { category = it }
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // ✅ LEAGUE FILTER
             LeagueFilter(
                 selectedLeagueId = selectedLeagueId,
-                onLeagueSelected = { selectedLeagueId = it }
+                onLeagueSelected = { selectedLeagueId = it },
+                searchQuery = searchQuery,
+                footballType = footballType,
+                category = category
             )
 
             Spacer(Modifier.height(12.dp))
@@ -103,7 +119,139 @@ fun FootballScreen(
     }
 }
 
+/* -------------------- TOP FILTERS -------------------- */
 
+@Composable
+fun FootballTopFilters(
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    footballType: String,
+    onFootballTypeChange: (String) -> Unit,
+    category: String,
+    onCategoryChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search leagues...") },
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FootballTypeDropdown(
+                selected = footballType,
+                onSelected = onFootballTypeChange
+            )
+
+            CategoryFilter(
+                selected = category,
+                onSelected = onCategoryChange
+            )
+        }
+    }
+}
+
+/* -------------------- STABLE DROPDOWN -------------------- */
+
+@Composable
+fun FootballTypeDropdown(
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf("Club", "International")
+
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.height(30.dp)
+        ) {
+            Text("Type: $selected")
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+/* -------------------- CATEGORY FILTER -------------------- */
+
+@Composable
+fun CategoryFilter(
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    val categories = listOf("Men", "Women", "U19")
+
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(categories) { item ->
+            FilterChip(
+                selected = selected == item,
+                onClick = { onSelected(item) },
+                label = { Text(item) }
+            )
+        }
+    }
+}
+
+/* -------------------- LEAGUE FILTER -------------------- */
+
+@Composable
+fun LeagueFilter(
+    selectedLeagueId: Int,
+    onLeagueSelected: (Int) -> Unit,
+    searchQuery: String,
+    footballType: String,
+    category: String
+) {
+    val allLeagues = listOf(
+        Triple(39, "Premier League", "Club"),
+        Triple(140, "La Liga", "Club"),
+        Triple(135, "Serie A", "Club"),
+        Triple(78, "Bundesliga", "Club"),
+        Triple(61, "Ligue 1", "Club"),
+        Triple(1, "World Cup", "International"),
+        Triple(2, "UEFA Nations League", "International"),
+        Triple(4, "Euro Championship", "International")
+    )
+
+    val filteredLeagues = allLeagues.filter {
+        it.second.contains(searchQuery, ignoreCase = true) &&
+                it.third == footballType
+        // category ready for backend logic
+    }
+
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(filteredLeagues) { league ->
+            FilterChip(
+                selected = selectedLeagueId == league.first,
+                onClick = { onLeagueSelected(league.first) },
+                label = { Text(league.second) }
+            )
+        }
+    }
+}
+
+/* -------------------- MATCH UI -------------------- */
 
 private fun groupFixtures(fixtures: List<Fixture>): Map<String, List<Fixture>> {
     val today = LocalDate.now()
@@ -127,7 +275,6 @@ fun MatchCard(
     match: Fixture,
     onClick: () -> Unit
 ) {
-
     val dateTime = OffsetDateTime.parse(match.fixture.date)
         .atZoneSameInstant(ZoneId.systemDefault())
         .toLocalDateTime()
@@ -188,29 +335,6 @@ fun MatchCard(
                     Text(match.teams.away.name)
                 }
             }
-        }
-    }
-}
-
-
-@Composable
-fun LeagueFilter(
-    selectedLeagueId: Int,
-    onLeagueSelected: (Int) -> Unit
-) {
-    val leagues = listOf(
-        39 to "Premier League",
-        140 to "La Liga",
-        135 to "Serie A"
-    )
-
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(leagues) { league ->
-            FilterChip(
-                selected = selectedLeagueId == league.first,
-                onClick = { onLeagueSelected(league.first) },
-                label = { Text(league.second) }
-            )
         }
     }
 }
