@@ -65,6 +65,8 @@ dependencies {
 
     implementation("com.cloudinary:cloudinary-android:2.3.1")
 
+    implementation ("com.google.dagger:hilt-android:2.48")
+
     // Google Sign-In - Updated to a valid version
     implementation("com.google.android.gms:play-services-auth:21.0.0")  // Changed from 21.0.1
 
@@ -73,6 +75,10 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage-ktx")
+
+    implementation("com.google.firebase:firebase-firestore-ktx:24.9.1")
+    implementation("com.google.firebase:firebase-auth-ktx:22.3.0")
+
 
     // Core
     implementation("androidx.core:core-ktx:1.12.0")

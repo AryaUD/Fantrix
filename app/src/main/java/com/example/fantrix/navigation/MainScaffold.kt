@@ -30,42 +30,34 @@ fun MainScaffold() {
     var user by remember { mutableStateOf(auth.currentUser) }
     var profileImage by remember { mutableStateOf("") }
 
-    /* 🔥 AUTH STATE LISTENER */
-    DisposableEffect(Unit) {
-        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+    // Listen for auth changes
+    LaunchedEffect(Unit) {
+        val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             user = firebaseAuth.currentUser
         }
-        auth.addAuthStateListener(listener)
-        onDispose { auth.removeAuthStateListener(listener) }
+        auth.addAuthStateListener(authStateListener)
     }
 
-    /* 🔥 REALTIME PROFILE IMAGE LISTENER */
-    DisposableEffect(user?.uid) {
-        if (user == null) return@DisposableEffect onDispose {}
+    // Listen for profile image changes
+    LaunchedEffect(user?.uid) {
+        if (user == null) {
+            profileImage = ""
+            return@LaunchedEffect
+        }
 
-        val registration = firestore.collection("users")
+        firestore.collection("users")
             .document(user!!.uid)
             .addSnapshotListener { doc, _ ->
                 if (doc != null && doc.exists()) {
                     profileImage = doc.getString("profileImage") ?: ""
                 }
             }
-
-        onDispose { registration.remove() }
-    }
-
-    /* 🔐 AUTH GUARD */
-    LaunchedEffect(user) {
-        if (user == null) {
-            navController.navigate("onboarding") {
-                popUpTo(0) { inclusive = true }
-            }
-        }
     }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Hide bars for onboarding and profile setup screens
     val hideBars = currentRoute in listOf(
         "onboarding",
         "userDetails",
@@ -74,7 +66,7 @@ fun MainScaffold() {
 
     Scaffold(
         topBar = {
-            if (!hideBars) {
+            if (!hideBars && user != null) { // Only show top bar if user is logged in
                 TopAppBar(
                     title = { Text("Fantrix") },
                     actions = {
@@ -97,9 +89,9 @@ fun MainScaffold() {
                                 ),
                                 contentDescription = "Profile",
                                 modifier = Modifier
-                                    .size(36.dp)              // ✅ fixed size
-                                    .clip(CircleShape),       // ✅ circle mask
-                                contentScale = ContentScale.Crop // ✅ fills circle properly
+                                    .size(36.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }
@@ -108,9 +100,8 @@ fun MainScaffold() {
         },
 
         bottomBar = {
-            if (!hideBars) {
+            if (!hideBars && user != null) { // Only show bottom bar if user is logged in
                 NavigationBar {
-
                     NavigationBarItem(
                         selected = currentRoute == "live_matches",
                         onClick = { navController.navigate("live_matches") { launchSingleTop = true } },
@@ -140,7 +131,7 @@ fun MainScaffold() {
                     NavigationBarItem(
                         selected = currentRoute == "Arcade",
                         onClick = { navController.navigate("Arcade") { launchSingleTop = true } },
-                        icon = { Icon(Icons.Default.ConnectingAirports,null) },
+                        icon = { Icon(Icons.Default.ConnectingAirports, null) },
                         label = { Text("Arcade") }
                     )
 

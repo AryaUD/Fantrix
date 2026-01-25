@@ -25,6 +25,7 @@ import com.example.fantrix.R
 import com.example.fantrix.theme.ThemeManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun ProfileScreen(navController: NavController) {
@@ -34,22 +35,52 @@ fun ProfileScreen(navController: NavController) {
     val user = auth.currentUser
 
     var name by remember { mutableStateOf("User") }
-    var email by remember { mutableStateOf("") }
     var image by remember { mutableStateOf("") }
     var preferredSport by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        user?.uid?.let { uid ->
-            firestore.collection("users").document(uid)
-                .addSnapshotListener { doc, _ ->
-                    if (doc != null && doc.exists()) {
-                        name = doc.getString("fullName") ?: "User"
-                        email = doc.getString("email") ?: user.email.orEmpty()
-                        image = doc.getString("profileImage") ?: ""
-                        preferredSport = doc.getString("preferredSport") ?: ""
-                    }
+    // Load user data
+    LaunchedEffect(user?.uid) {
+        if (user == null) return@LaunchedEffect
+
+        try {
+            isLoading = true
+
+            // Try multiple field names for username
+            val doc = firestore.collection("users").document(user.uid).get().await()
+
+            if (doc.exists()) {
+                // Check different possible field names for name
+                name = when {
+                    doc.contains("fullName") -> doc.getString("fullName") ?: "User"
+                    doc.contains("username") -> doc.getString("username") ?: "User"
+                    doc.contains("name") -> doc.getString("name") ?: "User"
+                    else -> user.displayName ?: "User"
                 }
+
+                // Check different possible field names for profile image
+                image = when {
+                    doc.contains("profileImage") -> doc.getString("profileImage") ?: ""
+                    doc.contains("profileImageUrl") -> doc.getString("profileImageUrl") ?: ""
+                    doc.contains("imageUrl") -> doc.getString("imageUrl") ?: ""
+                    doc.contains("photoUrl") -> doc.getString("photoUrl") ?: ""
+                    else -> ""
+                }
+
+                preferredSport = doc.getString("preferredSport") ?: ""
+            } else {
+                // If no document exists, use Firebase Auth data
+                name = user.displayName ?: "User"
+                image = user.photoUrl?.toString() ?: ""
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            name = "User"
+            image = ""
+            preferredSport = ""
+        } finally {
+            isLoading = false
         }
     }
 
@@ -59,7 +90,7 @@ fun ProfileScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState()) // ✅ SCROLL FIX
+                .verticalScroll(rememberScrollState())
         ) {
 
             Text(
@@ -71,34 +102,67 @@ fun ProfileScreen(navController: NavController) {
 
             /* -------- Profile card -------- */
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(Color.White)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            if (image.isNotBlank()) image else R.drawable.default_avatar
-                        ),
-                        contentDescription = "Profile",
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    CircularProgressIndicator()
+                }
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(Color.White)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Profile Image
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                if (image.isNotBlank()) {
+                                    image
+                                } else {
+                                    R.drawable.default_avatar
+                                }
+                            ),
+                            contentDescription = "Profile",
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
 
-                    Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(12.dp))
 
-                    Column {
-                        Text(name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        if (preferredSport.isNotBlank()) {
-                            Text(preferredSport, fontSize = 13.sp, color = Color.Gray)
+                        Column {
+                            Text(
+                                text = name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
+                            if (preferredSport.isNotBlank()) {
+                                Text(
+                                    text = preferredSport,
+                                    fontSize = 13.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                            Text(
+                                text = "Tap to edit profile",
+                                fontSize = 12.sp,
+                                color = Color(0xFF2196F3),
+                                modifier = Modifier.clickable {
+                                    navController.navigate("edit_profile")
+                                }
+                            )
                         }
                     }
                 }
