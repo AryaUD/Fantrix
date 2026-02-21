@@ -3,10 +3,11 @@ package com.example.fantrix.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.fantrix.screens.*
-import com.example.fantrix.screens.LiveMatchesScreen
 import com.example.fantrix.screens.live.LivePlayerScreen
 
 @Composable
@@ -19,7 +20,6 @@ fun AppNavHost(
         startDestination = "onboarding",
         modifier = modifier
     ) {
-
         composable("onboarding") { OnboardingFlowScreen(navController) }
         composable("userDetails") { UserDetailsScreen(navController) }
         composable("sportsPreference") { SportsPreferenceScreen(navController) }
@@ -28,11 +28,29 @@ fun AppNavHost(
         composable("edit_profile") { EditProfileScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
 
-        // ✅ Live matches
-        composable("live_matches")
-        { LiveMatchesScreen(navController) }
-        composable("live_player") {
-            LivePlayerScreen()
+        composable("live_matches") { LiveMatchesScreen(navController) }
+
+        // ✅ Updated: pass video URL to player
+        composable(
+            route = "live_player?url={url}&name={name}&info={info}&id={id}",
+            arguments = listOf(
+                navArgument("url") { type = NavType.StringType },
+                navArgument("name") { type = NavType.StringType },
+                navArgument("info") { type = NavType.StringType },
+                navArgument("id") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val url = backStackEntry.arguments?.getString("url") ?: ""
+            val name = backStackEntry.arguments?.getString("name") ?: ""
+            val info = backStackEntry.arguments?.getString("info") ?: ""
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+
+            LivePlayerScreen(
+                videoUrl = url,
+                matchName = name,
+                matchInfo = info,
+                matchId = id
+            )
         }
 
         composable("watch_party") { WatchPartyScreen() }
