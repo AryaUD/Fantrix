@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.fantrix.screens.*
 import com.example.fantrix.screens.live.LivePlayerScreen
+import com.example.fantrix.Sports.FootballMatchDetails.FootballMatchDetailsScreen
 
 @Composable
 fun AppNavHost(
@@ -30,7 +31,20 @@ fun AppNavHost(
 
         composable("live_matches") { LiveMatchesScreen(navController) }
 
-        // ✅ Updated: pass video URL to player
+        // ✅ Football match details screen
+        composable(
+            route = "matchDetails/{fixtureId}",
+            arguments = listOf(navArgument("fixtureId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val fixtureId = backStackEntry.arguments?.getInt("fixtureId") ?: 0
+
+            FootballMatchDetailsScreen(
+                fixtureId = fixtureId,
+                navController = navController
+            )
+        }
+
+        // ✅ Live player
         composable(
             route = "live_player?url={url}&name={name}&info={info}&id={id}",
             arguments = listOf(
