@@ -171,7 +171,8 @@ fun FootballTypeDropdown(
     Box {
         OutlinedButton(
             onClick = { expanded = true },
-            modifier = Modifier.height(30.dp)
+            modifier = Modifier.height(35
+                .dp)
         ) {
             Text("Type: $selected")
         }

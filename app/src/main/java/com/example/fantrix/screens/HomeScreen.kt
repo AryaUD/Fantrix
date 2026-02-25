@@ -12,9 +12,13 @@ import com.example.fantrix.Sports.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.fantrix.Viewmodel.CricketViewModel
 
 @Composable
 fun HomeScreen(navController: NavController) {
+
+    val cricketViewModel: CricketViewModel = viewModel()
 
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
@@ -68,7 +72,7 @@ fun HomeScreen(navController: NavController) {
 
         // ✅ CONTENT ONLY (no Scaffold)
         when (selectedSport) {
-            "Cricket" -> CricketScreen()
+            "Cricket" -> CricketScreen(navController, cricketViewModel)
             "Football" -> FootballScreen(navController)
             "F1" -> F1Screen()
             "Kabaddi" -> KabaddiScreen()
