@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 class FootballViewModel : ViewModel() {
 
     private val api =
-        ApiClient.retrofit.create(FootballApiService::class.java)
+        ApiClient.footballRetrofit.create(FootballApiService::class.java)
 
     /* ================= FIXTURES ================= */
 

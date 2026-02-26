@@ -8,7 +8,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
 
-    private const val BASE_URL = "https://v3.football.api-sports.io/"
+    private const val FOOTBALL_BASE_URL = "https://v3.football.api-sports.io/"
+    private const val F1_BASE_URL = "https://v1.formula-1.api-sports.io/"
     private const val API_KEY = "b7cece119b225ef97e10f90ccd2f80f1"
 
     private val authInterceptor = Interceptor { chain ->
@@ -27,8 +28,14 @@ object ApiClient {
         .addInterceptor(logging)
         .build()
 
-    val retrofit: Retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
+    val footballRetrofit: Retrofit = Retrofit.Builder()
+        .baseUrl(FOOTBALL_BASE_URL)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val f1Retrofit: Retrofit = Retrofit.Builder()
+        .baseUrl(F1_BASE_URL)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()

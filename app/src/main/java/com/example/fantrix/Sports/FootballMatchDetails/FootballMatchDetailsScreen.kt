@@ -17,7 +17,7 @@ import com.example.fantrix.Service.FootballServices.FootballStatItem
 import com.example.fantrix.Service.FootballServices.FootballTeamStats
 import com.example.fantrix.Service.FootballServices.TeamStanding
 import com.example.fantrix.Viewmodel.FootballViewModel
-import com.example.fantrix.Viewmodel.StandingsViewModel
+import com.example.fantrix.Viewmodel.FootballStandingsViewModel
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
@@ -26,8 +26,8 @@ import java.time.format.DateTimeFormatter
 fun FootballMatchDetailsScreen(
     fixtureId: Int,
     navController: NavController,
-    footballViewModel: FootballViewModel = viewModel(),
-    standingsViewModel: StandingsViewModel = viewModel()
+    footballViewModel: FootballViewModel = viewModel<FootballViewModel>(),
+    standingsViewModel: FootballStandingsViewModel = viewModel<FootballStandingsViewModel>()
 ) {
     val match by footballViewModel.matchDetails
     val stats by footballViewModel.matchStats

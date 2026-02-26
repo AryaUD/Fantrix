@@ -8,10 +8,10 @@ import com.example.fantrix.Service.FootballServices.FootballApiService
 import com.example.fantrix.Service.FootballServices.TeamStanding
 import kotlinx.coroutines.launch
 
-class StandingsViewModel : ViewModel() {
+class FootballStandingsViewModel : ViewModel() {
 
     private val api =
-        ApiClient.retrofit.create(FootballApiService::class.java)
+        ApiClient.footballRetrofit.create(FootballApiService::class.java)
 
     val standings = mutableStateOf<List<TeamStanding>>(emptyList())
     val isLoading = mutableStateOf(false)
