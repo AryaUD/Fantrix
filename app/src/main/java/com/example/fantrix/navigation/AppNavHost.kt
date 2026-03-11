@@ -10,6 +10,9 @@ import androidx.navigation.navArgument
 import com.example.fantrix.screens.*
 import com.example.fantrix.screens.live.LivePlayerScreen
 import com.example.fantrix.Sports.FootballMatchDetails.FootballMatchDetailsScreen
+import com.example.fantrix.screens.watchparty.HostPartySetupScreen
+import com.example.fantrix.screens.watchparty.JoinPartyScreen
+import com.example.fantrix.screens.watchparty.WatchPartyRoomScreen
 
 @Composable
 fun AppNavHost(
@@ -21,6 +24,7 @@ fun AppNavHost(
         startDestination = "onboarding",
         modifier = modifier
     ) {
+
         composable("onboarding") { OnboardingFlowScreen(navController) }
         composable("userDetails") { UserDetailsScreen(navController) }
         composable("sportsPreference") { SportsPreferenceScreen(navController) }
@@ -29,22 +33,79 @@ fun AppNavHost(
         composable("edit_profile") { EditProfileScreen(navController) }
         composable("settings") { SettingsScreen(navController) }
 
-        composable("live_matches") { LiveMatchesScreen(navController) }
+        // ✅ Normal Live Matches (unchanged - watch without any room)
+        composable("live_matches") {
+            LiveMatchesScreen(navController)
+        }
 
-        // ✅ Football match details screen
+        // ✅ Host Mode - select match to host
+        composable("live_matches_host") {
+            LiveMatchesScreen(
+                navController = navController,
+                isHostMode = true
+            )
+        }
+
+        // ✅ Host Party Setup - set password, share room code
+        composable(
+            route = "host_setup/{matchId}?matchName={matchName}&matchInfo={matchInfo}&videoUrl={videoUrl}",
+            arguments = listOf(
+                navArgument("matchId") { type = NavType.StringType },
+                navArgument("matchName") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("matchInfo") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("videoUrl") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            HostPartySetupScreen(
+                navController = navController,
+                matchId = backStackEntry.arguments?.getString("matchId") ?: "",
+                matchName = backStackEntry.arguments?.getString("matchName") ?: "",
+                matchInfo = backStackEntry.arguments?.getString("matchInfo") ?: "",
+                videoUrl = backStackEntry.arguments?.getString("videoUrl") ?: ""
+            )
+        }
+
+        // ✅ Watch Party Main Screen
+        composable("watch_party") {
+            WatchPartyScreen(navController)
+        }
+
+        // ✅ Join Party
+        composable("join_party") {
+            JoinPartyScreen(navController)
+        }
+
+        // ✅ Party Room
+        composable(
+            route = "party_room/{roomId}",
+            arguments = listOf(navArgument("roomId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
+            WatchPartyRoomScreen(navController, roomId)
+        }
+
+        // ✅ Football match details
         composable(
             route = "matchDetails/{fixtureId}",
             arguments = listOf(navArgument("fixtureId") { type = NavType.IntType })
         ) { backStackEntry ->
             val fixtureId = backStackEntry.arguments?.getInt("fixtureId") ?: 0
-
             FootballMatchDetailsScreen(
                 fixtureId = fixtureId,
                 navController = navController
             )
         }
 
-        // ✅ Live player
+        // ✅ Live Player (normal watch - completely separate from watch party)
         composable(
             route = "live_player?url={url}&name={name}&info={info}&id={id}",
             arguments = listOf(
@@ -67,7 +128,6 @@ fun AppNavHost(
             )
         }
 
-        composable("watch_party") { WatchPartyScreen() }
         composable("Arcade") { ArcadeScreen() }
         composable("live_feed") { LiveFeedScreen() }
         composable("notifications") { NotificationsScreen() }

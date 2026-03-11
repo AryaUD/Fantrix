@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 data class LiveMatch(
     val id: String,
@@ -18,7 +20,13 @@ data class LiveMatch(
 )
 
 @Composable
-fun LiveMatchesScreen(navController: NavController) {
+fun LiveMatchesScreen(
+    navController: NavController,
+    isHostMode: Boolean = false
+) {
+
+    val auth = FirebaseAuth.getInstance()
+    val userId = auth.currentUser?.uid
 
     val matches = listOf(
         LiveMatch(
@@ -46,26 +54,42 @@ fun LiveMatchesScreen(navController: NavController) {
             .fillMaxSize()
             .padding(12.dp)
     ) {
+
         Text(
-            text = "Live Matches",
+            text = if (isHostMode) "Select Match to Host" else "Live Matches",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(matches) { match ->
+
                 MatchCard(
                     matchName = match.name,
                     matchInfo = match.info
                 ) {
-                    val route =
-                        "live_player" +
+
+                    if (isHostMode) {
+                        if (userId == null) return@MatchCard
+
+                        // ✅ Navigate to setup screen instead of creating room directly
+                        navController.navigate(
+                            "host_setup/${Uri.encode(match.id)}" +
+                                    "?matchName=${Uri.encode(match.name)}" +
+                                    "&matchInfo=${Uri.encode(match.info)}" +
+                                    "&videoUrl=${Uri.encode(match.videoUrl)}"
+                        )
+
+                    } else {
+
+                        val route = "live_player" +
                                 "?url=${Uri.encode(match.videoUrl)}" +
                                 "&name=${Uri.encode(match.name)}" +
                                 "&info=${Uri.encode(match.info)}" +
                                 "&id=${Uri.encode(match.id)}"
 
-                    navController.navigate(route)
+                        navController.navigate(route)
+                    }
                 }
             }
         }
