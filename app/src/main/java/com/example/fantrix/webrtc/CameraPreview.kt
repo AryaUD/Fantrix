@@ -11,7 +11,6 @@ fun CameraPreview(
     webRTCManager: WebRTCManager,
     modifier: Modifier = Modifier
 ) {
-    // ✅ Use the SAME EglBase from WebRTCManager — this fixes the black box
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -20,16 +19,16 @@ fun CameraPreview(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                // ✅ Use shared eglBase, not a new one
                 init(webRTCManager.eglBase.eglBaseContext, null)
-                setMirror(true)          // Mirror for selfie cam
+                setMirror(true)
                 setEnableHardwareScaler(true)
-                webRTCManager.localVideoTrack.addSink(this)
+                webRTCManager.getLocalVideoTrack()?.addSink(this)
             }
         },
         update = { view ->
-            // Re-add sink if track changes
-            webRTCManager.localVideoTrack.addSink(view)
+            // view is the SurfaceViewRenderer — use it directly
+            webRTCManager.getLocalVideoTrack()?.removeSink(view)
+            webRTCManager.getLocalVideoTrack()?.addSink(view)
         }
     )
 

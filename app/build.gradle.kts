@@ -63,6 +63,8 @@ android {
 
 dependencies {
 
+    implementation ("com.google.firebase:firebase-database-ktx")
+
     implementation("io.getstream:stream-webrtc-android:1.1.0")
 
     implementation("androidx.media3:media3-exoplayer:1.3.1")
