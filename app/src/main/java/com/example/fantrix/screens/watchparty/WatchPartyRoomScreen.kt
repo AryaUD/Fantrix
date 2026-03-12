@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +35,7 @@ import com.example.fantrix.webrtc.CameraPreview
 import com.example.fantrix.webrtc.WebRTCManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @Composable
@@ -50,21 +48,20 @@ fun WatchPartyRoomScreen(
     val auth = FirebaseAuth.getInstance()
     val userId = auth.currentUser?.uid ?: return
 
-    // Room state
     var matchName by remember { mutableStateOf("") }
     var matchInfo by remember { mutableStateOf("") }
     var videoUrl by remember { mutableStateOf("") }
     var hostId by remember { mutableStateOf("") }
     var participants by remember { mutableStateOf<List<String>>(emptyList()) }
-
-    // Username map: userId -> displayName
     var userNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
-    // Camera/mic state
+    // ✅ Room ended state
+    var roomEnded by remember { mutableStateOf(false) }
+    var redirectCountdown by remember { mutableStateOf(5) }
+
     var isMicOn by remember { mutableStateOf(true) }
     var isCameraOn by remember { mutableStateOf(true) }
 
-    // Floating camera bubble position
     var offsetX by remember { mutableStateOf(16f) }
     var offsetY by remember { mutableStateOf(16f) }
     var screenWidth by remember { mutableStateOf(0f) }
@@ -73,19 +70,15 @@ fun WatchPartyRoomScreen(
     val density = LocalDensity.current
     val bubblePx = with(density) { bubbleSize.toPx() }
 
-    // WebRTC
     val webRTCManager = remember { WebRTCManager(context) }
     var webRTCReady by remember { mutableStateOf(false) }
 
-    // Permissions
     val cameraGranted = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
     ) == PackageManager.PERMISSION_GRANTED
-
     val audioGranted = ContextCompat.checkSelfPermission(
         context, Manifest.permission.RECORD_AUDIO
     ) == PackageManager.PERMISSION_GRANTED
-
     var permissionsGranted by remember { mutableStateOf(cameraGranted && audioGranted) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -114,6 +107,19 @@ fun WatchPartyRoomScreen(
         onDispose { webRTCManager.release() }
     }
 
+    // ✅ Countdown redirect after room ends
+    LaunchedEffect(roomEnded) {
+        if (roomEnded) {
+            while (redirectCountdown > 0) {
+                delay(1000)
+                redirectCountdown--
+            }
+            navController.navigate("watch_party") {
+                popUpTo("party_room/$roomId") { inclusive = true }
+            }
+        }
+    }
+
     // 🔥 Room listener
     LaunchedEffect(roomId) {
         firestore.collection("watch_parties")
@@ -126,13 +132,26 @@ fun WatchPartyRoomScreen(
                     hostId = document.getString("hostId") ?: ""
                     val participantsMap = document.get("participants") as? Map<*, *>
                     participants = participantsMap?.keys?.map { it.toString() } ?: emptyList()
+
+                    // ✅ Check if room is still live
+                    val isLive = document.getBoolean("isLive") ?: true
+                    if (!isLive && userId != hostId) {
+                        roomEnded = true
+                    }
                 } else {
-                    navController.popBackStack()
+                    // Document deleted = host ended party
+                    if (userId != hostId) {
+                        roomEnded = true
+                    } else {
+                        navController.navigate("watch_party") {
+                            popUpTo("party_room/$roomId") { inclusive = true }
+                        }
+                    }
                 }
             }
     }
 
-    // ✅ Fetch username for each participant from Firestore
+    // Fetch usernames
     LaunchedEffect(participants) {
         participants.forEach { uid ->
             if (!userNames.containsKey(uid)) {
@@ -149,6 +168,74 @@ fun WatchPartyRoomScreen(
         }
     }
 
+    // ✅ Room Ended Screen
+    if (roomEnded) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(32.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.errorContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.VideocamOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                Text(
+                    text = "Party Ended",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Text(
+                    text = "The host has ended this watch party.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "Redirecting in $redirectCountdown seconds...",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        navController.navigate("watch_party") {
+                            popUpTo("party_room/$roomId") { inclusive = true }
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Back to Watch Party", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        return
+    }
+
+    // ── Main Room UI ──────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -157,8 +244,6 @@ fun WatchPartyRoomScreen(
                 screenHeight = coords.size.height.toFloat()
             }
     ) {
-
-        // ── Main content: video + chat ────────────────────────────────────────
         Column(modifier = Modifier.fillMaxSize()) {
 
             // Top bar
@@ -187,7 +272,6 @@ fun WatchPartyRoomScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
-                    // Room code only (no password shown)
                     Text(
                         text = "Room: $roomId",
                         style = MaterialTheme.typography.labelSmall,
@@ -217,8 +301,7 @@ fun WatchPartyRoomScreen(
             }
         }
 
-        // ── Floating draggable camera bubbles ─────────────────────────────────
-        // Other participants shown as small fixed tiles at bottom-right
+        // Other participants
         val otherParticipants = participants.filter { it != userId }
         if (otherParticipants.isNotEmpty()) {
             Column(
@@ -236,7 +319,7 @@ fun WatchPartyRoomScreen(
             }
         }
 
-        // ── MY floating draggable camera bubble ───────────────────────────────
+        // My floating draggable camera bubble
         if (permissionsGranted) {
             Box(
                 modifier = Modifier
@@ -245,23 +328,15 @@ fun WatchPartyRoomScreen(
                     .shadow(8.dp, RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(16.dp)
-                    )
+                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
                     .pointerInput(Unit) {
                         detectDragGestures { change, dragAmount ->
                             change.consume()
-                            // Clamp within screen bounds
-                            offsetX = (offsetX + dragAmount.x)
-                                .coerceIn(0f, screenWidth - bubblePx)
-                            offsetY = (offsetY + dragAmount.y)
-                                .coerceIn(0f, screenHeight - bubblePx)
+                            offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - bubblePx)
+                            offsetY = (offsetY + dragAmount.y).coerceIn(0f, screenHeight - bubblePx)
                         }
                     }
             ) {
-                // Camera preview
                 if (isCameraOn && webRTCReady) {
                     CameraPreview(
                         webRTCManager = webRTCManager,
@@ -283,7 +358,6 @@ fun WatchPartyRoomScreen(
                     }
                 }
 
-                // Username label at bottom
                 val myName = userNames[userId] ?: "You"
                 Text(
                     text = if (userId == hostId) "👑 $myName" else myName,
@@ -297,14 +371,10 @@ fun WatchPartyRoomScreen(
                         .padding(2.dp)
                 )
 
-                // ── Mic & Camera toggle buttons on bubble ─────────────────
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(4.dp),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // Mic toggle
                     SmallControlButton(
                         icon = if (isMicOn) Icons.Default.Mic else Icons.Default.MicOff,
                         isActive = isMicOn,
@@ -313,7 +383,6 @@ fun WatchPartyRoomScreen(
                             webRTCManager.setMicEnabled(isMicOn)
                         }
                     )
-                    // Camera toggle
                     SmallControlButton(
                         icon = if (isCameraOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
                         isActive = isCameraOn,
@@ -326,22 +395,28 @@ fun WatchPartyRoomScreen(
             }
         }
 
-        // ── Leave / End Party button (bottom center) ──────────────────────────
+        // Leave / End Party button
         Button(
             onClick = {
                 if (userId == hostId) {
-                    firestore.collection("watch_parties").document(roomId).delete()
+                    // ✅ Mark room as not live before deleting so participants see "Room Ended"
+                    firestore.collection("watch_parties")
+                        .document(roomId)
+                        .update("isLive", false)
+                        .addOnSuccessListener {
+                            firestore.collection("watch_parties").document(roomId).delete()
+                        }
                 } else {
                     firestore.collection("watch_parties")
                         .document(roomId)
                         .update("participants.$userId", null)
                 }
                 webRTCManager.release()
-                navController.popBackStack()
+                navController.navigate("watch_party") {
+                    popUpTo("party_room/$roomId") { inclusive = true }
+                }
             },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -357,7 +432,6 @@ fun WatchPartyRoomScreen(
     }
 }
 
-// ── Other participant bubble (non-draggable) ──────────────────────────────────
 @Composable
 fun OtherParticipantBubble(name: String, isHost: Boolean) {
     Box(
@@ -368,7 +442,6 @@ fun OtherParticipantBubble(name: String, isHost: Boolean) {
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
-        // Avatar initial
         Box(
             modifier = Modifier
                 .size(32.dp)
@@ -383,7 +456,6 @@ fun OtherParticipantBubble(name: String, isHost: Boolean) {
                 fontSize = 14.sp
             )
         }
-
         Text(
             text = if (isHost) "👑 $name" else name,
             color = MaterialTheme.colorScheme.onSurface,
@@ -398,7 +470,6 @@ fun OtherParticipantBubble(name: String, isHost: Boolean) {
     }
 }
 
-// ── Small mic/camera button on bubble ────────────────────────────────────────
 @Composable
 fun SmallControlButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -410,9 +481,7 @@ fun SmallControlButton(
         modifier = Modifier
             .size(28.dp)
             .clip(CircleShape)
-            .background(
-                if (isActive) Color(0x99000000) else MaterialTheme.colorScheme.error
-            )
+            .background(if (isActive) Color(0x99000000) else MaterialTheme.colorScheme.error)
     ) {
         Icon(
             imageVector = icon,

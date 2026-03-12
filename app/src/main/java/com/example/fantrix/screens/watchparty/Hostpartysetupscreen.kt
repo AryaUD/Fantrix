@@ -8,11 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,20 +43,28 @@ fun HostPartySetupScreen(
         (1..10).map { chars.random() }.joinToString("")
     }
 
+    // ✅ Public/Private toggle
+    var isPublic by remember { mutableStateOf(true) }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var passwordError by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var showCopied by remember { mutableStateOf(false) }
 
-    val inviteText = "Join my Watch Party on Fantrix!\n" +
-            "Match: $matchName\n" +
-            "Room Code: $roomId\n" +
-            "Password: $password\n" +
-            "Open Fantrix → Watch Party → Join Party"
+    val inviteText = if (isPublic) {
+        "Join my Watch Party on Fantrix!\n" +
+                "Match: $matchName\n" +
+                "Room Code: $roomId\n" +
+                "This is a PUBLIC room — open Fantrix and find it in Watch Party!"
+    } else {
+        "Join my Watch Party on Fantrix!\n" +
+                "Match: $matchName\n" +
+                "Room Code: $roomId\n" +
+                "Password: $password\n" +
+                "Open Fantrix → Watch Party → Join Party"
+    }
 
     Scaffold { paddingValues ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -73,8 +77,7 @@ fun HostPartySetupScreen(
             Text(
                 text = "Host Watch Party",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                fontWeight = FontWeight.Bold
             )
 
             // ── Selected Match Card ──────────────────────────────────────────
@@ -91,12 +94,11 @@ fun HostPartySetupScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = matchName,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = matchInfo,
@@ -106,7 +108,7 @@ fun HostPartySetupScreen(
                 }
             }
 
-            // ── Room Code Card ───────────────────────────────────────────────
+            // ── Room Code ────────────────────────────────────────────────────
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -120,7 +122,7 @@ fun HostPartySetupScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -133,85 +135,126 @@ fun HostPartySetupScreen(
                             letterSpacing = 4.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        IconButton(
-                            onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
-                                        as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Room Code", roomId))
-                                showCopied = true
-                            }
-                        ) {
+                        IconButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
+                                    as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Room Code", roomId))
+                            showCopied = true
+                        }) {
                             Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Code",
+                                Icons.Default.ContentCopy,
+                                contentDescription = "Copy",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
-                    Text(
-                        text = "Share this code with friends to join",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            if (showCopied) {
-                Text(
-                    text = "✅ Room code copied!",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelMedium
-                )
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(2000)
-                    showCopied = false
-                }
-            }
-
-            // ── Password Field ────────────────────────────────────────────────
-            OutlinedTextField(
-                value = password,
-                onValueChange = {
-                    password = it
-                    passwordError = ""
-                },
-                label = { Text("Set Party Password") },
-                placeholder = { Text("Min 4 characters") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible)
-                                Icons.Default.VisibilityOff
-                            else
-                                Icons.Default.Visibility,
-                            contentDescription = null
+                    if (showCopied) {
+                        Text(
+                            text = "Copied!",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall
                         )
+                        LaunchedEffect(Unit) {
+                            kotlinx.coroutines.delay(2000)
+                            showCopied = false
+                        }
                     }
-                },
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None
-                else
-                    PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                }
+            }
+
+            // ── Public / Private Toggle ───────────────────────────────────────
+            Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                isError = passwordError.isNotEmpty(),
-                supportingText = {
-                    if (passwordError.isNotEmpty()) {
-                        Text(passwordError, color = MaterialTheme.colorScheme.error)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = if (isPublic) "Public Room" else "Private Room",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = if (isPublic)
+                                "Anyone can see and join this room"
+                            else
+                                "Only people with the password can join",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isPublic) Icons.Default.Public else Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = if (isPublic) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = isPublic,
+                            onCheckedChange = {
+                                isPublic = it
+                                if (it) password = ""
+                                passwordError = ""
+                            }
+                        )
                     }
                 }
-            )
+            }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // ── Password Field (only for private) ─────────────────────────────
+            if (!isPublic) {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        passwordError = ""
+                    },
+                    label = { Text("Set Party Password") },
+                    placeholder = { Text("Min 4 characters") },
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible)
+                                    Icons.Default.VisibilityOff
+                                else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = passwordError.isNotEmpty(),
+                    supportingText = {
+                        if (passwordError.isNotEmpty())
+                            Text(passwordError, color = MaterialTheme.colorScheme.error)
+                    }
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
 
             // ── Share Button ─────────────────────────────────────────────────
             OutlinedButton(
                 onClick = {
-                    if (password.length < 4) {
+                    if (!isPublic && password.length < 4) {
                         passwordError = "Set a password first (min 4 characters)"
                         return@OutlinedButton
                     }
@@ -219,26 +262,20 @@ fun HostPartySetupScreen(
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, inviteText)
                     }
-                    context.startActivity(
-                        Intent.createChooser(shareIntent, "Share Watch Party Invite")
-                    )
+                    context.startActivity(Intent.createChooser(shareIntent, "Share Invite"))
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    Icons.Default.Share,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Share Invite (WhatsApp, SMS...)", fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Share Invite", fontWeight = FontWeight.SemiBold)
             }
 
             // ── Start Party Button ────────────────────────────────────────────
             Button(
                 onClick = {
-                    if (password.length < 4) {
+                    if (!isPublic && password.length < 4) {
                         passwordError = "Password must be at least 4 characters"
                         return@Button
                     }
@@ -249,7 +286,8 @@ fun HostPartySetupScreen(
                         "matchName" to matchName,
                         "matchInfo" to matchInfo,
                         "videoUrl" to videoUrl,
-                        "password" to password,
+                        "password" to if (isPublic) "" else password,
+                        "isPublic" to isPublic,   // ✅ Store public/private flag
                         "isLive" to true,
                         "createdAt" to FieldValue.serverTimestamp(),
                         "participants" to hashMapOf(userId to true)
@@ -268,9 +306,7 @@ fun HostPartySetupScreen(
                             passwordError = "Failed to create room. Try again."
                         }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 enabled = !isLoading
             ) {
@@ -282,7 +318,7 @@ fun HostPartySetupScreen(
                     )
                 } else {
                     Text(
-                        text = "🎉 Start Watch Party",
+                        text = "Start Watch Party",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )

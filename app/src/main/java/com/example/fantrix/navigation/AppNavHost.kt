@@ -13,6 +13,7 @@ import com.example.fantrix.Sports.FootballMatchDetails.FootballMatchDetailsScree
 import com.example.fantrix.screens.watchparty.HostPartySetupScreen
 import com.example.fantrix.screens.watchparty.JoinPartyScreen
 import com.example.fantrix.screens.watchparty.WatchPartyRoomScreen
+import com.example.fantrix.screens.watchparty.WatchPartyScreen
 
 @Composable
 fun AppNavHost(
