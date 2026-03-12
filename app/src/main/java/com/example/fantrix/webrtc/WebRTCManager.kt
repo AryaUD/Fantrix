@@ -14,11 +14,12 @@ class WebRTCManager(
     lateinit var audioTrack: AudioTrack
     lateinit var surfaceTextureHelper: SurfaceTextureHelper
 
-    private var eglBase: EglBase = EglBase.create()
+    // ✅ Single shared EglBase — must be reused by CameraPreview
+    val eglBase: EglBase = EglBase.create()
+
     private var isInitialized = false
 
     fun initialize() {
-
         if (isInitialized) return
 
         PeerConnectionFactory.initialize(
@@ -26,10 +27,14 @@ class WebRTCManager(
                 .createInitializationOptions()
         )
 
-        val options = PeerConnectionFactory.Options()
-
         peerConnectionFactory = PeerConnectionFactory.builder()
-            .setOptions(options)
+            .setOptions(PeerConnectionFactory.Options())
+            .setVideoDecoderFactory(
+                org.webrtc.DefaultVideoDecoderFactory(eglBase.eglBaseContext)
+            )
+            .setVideoEncoderFactory(
+                org.webrtc.DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true)
+            )
             .createPeerConnectionFactory()
 
         initializeVideo()
@@ -38,22 +43,14 @@ class WebRTCManager(
         isInitialized = true
     }
 
-    fun getEglBase(): EglBase = eglBase
-
     private fun initializeVideo() {
-
         surfaceTextureHelper =
             SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
 
-        videoCapturer = createCameraCapturer()
+        videoCapturer = createFrontCameraCapturer()
         videoSource = peerConnectionFactory.createVideoSource(false)
 
-        videoCapturer.initialize(
-            surfaceTextureHelper,
-            context,
-            videoSource.capturerObserver
-        )
-
+        videoCapturer.initialize(surfaceTextureHelper, context, videoSource.capturerObserver)
         videoCapturer.startCapture(720, 1280, 30)
 
         localVideoTrack =
@@ -67,14 +64,12 @@ class WebRTCManager(
         audioTrack.setEnabled(true)
     }
 
-    // ── Toggle mic ────────────────────────────────────────────────────────────
     fun setMicEnabled(enabled: Boolean) {
         if (isInitialized && ::audioTrack.isInitialized) {
             audioTrack.setEnabled(enabled)
         }
     }
 
-    // ── Toggle camera ─────────────────────────────────────────────────────────
     fun setCameraEnabled(enabled: Boolean) {
         if (isInitialized && ::localVideoTrack.isInitialized) {
             localVideoTrack.setEnabled(enabled)
@@ -86,14 +81,9 @@ class WebRTCManager(
         }
     }
 
-    // ── Release all resources when leaving room ───────────────────────────────
     fun release() {
         if (!isInitialized) return
-        try {
-            videoCapturer.stopCapture()
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
+        try { videoCapturer.stopCapture() } catch (e: InterruptedException) { e.printStackTrace() }
         videoCapturer.dispose()
         videoSource.dispose()
         surfaceTextureHelper.dispose()
@@ -102,16 +92,22 @@ class WebRTCManager(
         isInitialized = false
     }
 
-    private fun createCameraCapturer(): VideoCapturer {
-
+    // ✅ Front/selfie camera
+    private fun createFrontCameraCapturer(): VideoCapturer {
         val enumerator = Camera2Enumerator(context)
 
+        // First try front-facing camera
         for (deviceName in enumerator.deviceNames) {
             if (enumerator.isFrontFacing(deviceName)) {
                 return enumerator.createCapturer(deviceName, null)!!
             }
         }
 
-        throw IllegalStateException("No front camera found")
+        // Fallback to any available camera
+        for (deviceName in enumerator.deviceNames) {
+            return enumerator.createCapturer(deviceName, null)!!
+        }
+
+        throw IllegalStateException("No camera found on this device")
     }
 }
