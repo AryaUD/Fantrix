@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +45,6 @@ fun WatchPartyRoomScreen(
     val auth = FirebaseAuth.getInstance()
     val userId = auth.currentUser?.uid ?: return
 
-    // Room state
     var matchName by remember { mutableStateOf("") }
     var matchInfo by remember { mutableStateOf("") }
     var videoUrl by remember { mutableStateOf("") }
@@ -54,15 +52,12 @@ fun WatchPartyRoomScreen(
     var hostId by remember { mutableStateOf("") }
     var participants by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // Video/audio toggle state
     var isMicOn by remember { mutableStateOf(true) }
     var isCameraOn by remember { mutableStateOf(true) }
 
-    // WebRTC
     val webRTCManager = remember { WebRTCManager(context) }
     var webRTCReady by remember { mutableStateOf(false) }
 
-    // Check if permissions already granted
     val cameraGranted = ContextCompat.checkSelfPermission(
         context, Manifest.permission.CAMERA
     ) == PackageManager.PERMISSION_GRANTED
@@ -71,11 +66,8 @@ fun WatchPartyRoomScreen(
         context, Manifest.permission.RECORD_AUDIO
     ) == PackageManager.PERMISSION_GRANTED
 
-    var permissionsGranted by remember {
-        mutableStateOf(cameraGranted && audioGranted)
-    }
+    var permissionsGranted by remember { mutableStateOf(cameraGranted && audioGranted) }
 
-    // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
@@ -83,19 +75,14 @@ fun WatchPartyRoomScreen(
                 results[Manifest.permission.RECORD_AUDIO] == true
     }
 
-    // Request permissions on first launch if needed
     LaunchedEffect(Unit) {
         if (!permissionsGranted) {
             permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.RECORD_AUDIO
-                )
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
             )
         }
     }
 
-    // Init WebRTC once permissions granted
     LaunchedEffect(permissionsGranted) {
         if (permissionsGranted && !webRTCReady) {
             webRTCManager.initialize()
@@ -103,14 +90,10 @@ fun WatchPartyRoomScreen(
         }
     }
 
-    // Cleanup on leave
     DisposableEffect(Unit) {
-        onDispose {
-            webRTCManager.release()
-        }
+        onDispose { webRTCManager.release() }
     }
 
-    // 🔥 Real-time room listener
     LaunchedEffect(roomId) {
         firestore.collection("watch_parties")
             .document(roomId)
@@ -129,18 +112,22 @@ fun WatchPartyRoomScreen(
             }
     }
 
-    Box(
+    // ── Use MaterialTheme colors throughout ──────────────────────────────────
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Top Bar ──────────────────────────────────────────────────────
+        // ── Top Bar ──────────────────────────────────────────────────────────
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 4.dp
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF16213E))
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -148,75 +135,87 @@ fun WatchPartyRoomScreen(
                 Column {
                     Text(
                         text = matchName,
-                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "🔴 Watch Party  •  ${participants.size} watching",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(text = "Room: $roomId", color = Color(0xFFAAAAAA), fontSize = 11.sp)
-                    Text(text = "Pass: $password", color = Color(0xFFAAAAAA), fontSize = 11.sp)
-                }
-            }
-
-            // ── Match Stream ─────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                if (videoUrl.isNotEmpty()) {
-                    LivePlayerScreen(
-                        videoUrl = videoUrl,
-                        matchName = matchName,
-                        matchInfo = matchInfo,
-                        matchId = roomId
+                    Text(
+                        text = "Room: $roomId",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0xFF0F3460)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
+                    Text(
+                        text = "Pass: $password",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             }
+        }
 
-            // ── Participant Video Tiles (Discord-style) ───────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF16213E))
-                    .padding(vertical = 8.dp)
-            ) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp)
+        // ── Match Stream ─────────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            if (videoUrl.isNotEmpty()) {
+                LivePlayerScreen(
+                    videoUrl = videoUrl,
+                    matchName = matchName,
+                    matchInfo = matchInfo,
+                    matchId = roomId
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(participants) { participantId ->
-                        ParticipantTile(
-                            participantId = participantId,
-                            isCurrentUser = participantId == userId,
-                            isHost = participantId == hostId,
-                            webRTCManager = if (participantId == userId) webRTCManager else null,
-                            showVideo = participantId == userId && isCameraOn && webRTCReady
-                        )
-                    }
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
+        }
 
-            // ── Controls Bar ─────────────────────────────────────────────────
+        // ── Participant Tiles ─────────────────────────────────────────────────
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 2.dp
+        ) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                items(participants) { participantId ->
+                    ParticipantTile(
+                        participantId = participantId,
+                        isCurrentUser = participantId == userId,
+                        isHost = participantId == hostId,
+                        webRTCManager = if (participantId == userId) webRTCManager else null,
+                        showVideo = participantId == userId && isCameraOn && webRTCReady
+                    )
+                }
+            }
+        }
+
+        // ── Controls Bar ─────────────────────────────────────────────────────
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0F3460))
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
@@ -253,12 +252,14 @@ fun WatchPartyRoomScreen(
                         webRTCManager.release()
                         navController.popBackStack()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = if (userId == hostId) "End Party" else "Leave",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onError,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -282,10 +283,13 @@ fun ParticipantTile(
         modifier = Modifier
             .size(width = 100.dp, height = 80.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF0F3460))
+            .background(MaterialTheme.colorScheme.surface)
             .border(
                 width = if (isCurrentUser) 2.dp else 1.dp,
-                color = if (isCurrentUser) Color(0xFF5865F2) else Color(0xFF333355),
+                color = if (isCurrentUser)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(10.dp)
             ),
         contentAlignment = Alignment.Center
@@ -300,12 +304,12 @@ fun ParticipantTile(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF5865F2)),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = shortName.first().uppercase(),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -316,13 +320,13 @@ fun ParticipantTile(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color(0x99000000))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                 .padding(2.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = if (isHost) "👑 $shortName" else shortName,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 10.sp,
                 textAlign = TextAlign.Center
             )
@@ -348,17 +352,27 @@ fun ControlButton(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isActive) Color(0xFF2C2F3A) else Color(0xFFE53935)
+                    if (isActive)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else
+                        MaterialTheme.colorScheme.error
                 )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = Color.White,
+                tint = if (isActive)
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                else
+                    MaterialTheme.colorScheme.onError,
                 modifier = Modifier.size(22.dp)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = Color(0xFFAAAAAA), fontSize = 10.sp)
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 10.sp
+        )
     }
 }

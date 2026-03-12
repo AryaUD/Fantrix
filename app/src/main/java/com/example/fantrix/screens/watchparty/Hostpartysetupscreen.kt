@@ -4,8 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,14 +17,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -47,7 +42,6 @@ fun HostPartySetupScreen(
     val auth = FirebaseAuth.getInstance()
     val userId = auth.currentUser?.uid ?: return
 
-    // Generate a strong 10-character alphanumeric room code once
     val roomId = remember {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         (1..10).map { chars.random() }.joinToString("")
@@ -57,8 +51,7 @@ fun HostPartySetupScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var passwordError by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var roomCreated by remember { mutableStateOf(false) }
-    var showCopiedToast by remember { mutableStateOf(false) }
+    var showCopied by remember { mutableStateOf(false) }
 
     val inviteText = "Join my Watch Party on Fantrix!\n" +
             "Match: $matchName\n" +
@@ -66,14 +59,12 @@ fun HostPartySetupScreen(
             "Password: $password\n" +
             "Open Fantrix → Watch Party → Join Party"
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
-    ) {
+    Scaffold { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -81,54 +72,53 @@ fun HostPartySetupScreen(
             // ── Header ───────────────────────────────────────────────────────
             Text(
                 text = "Host Watch Party",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
-            // ── Match Card ───────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF16213E))
-                    .padding(16.dp)
+            // ── Selected Match Card ──────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
-                Column {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Selected Match",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = matchName,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = matchInfo,
-                        color = Color(0xFF5865F2),
-                        fontSize = 13.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            // ── Room Code Display ─────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF16213E))
-                    .border(1.dp, Color(0xFF5865F2), RoundedCornerShape(12.dp))
-                    .padding(16.dp)
+            // ── Room Code Card ───────────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
             ) {
-                Column {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Room Code",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -138,111 +128,87 @@ fun HostPartySetupScreen(
                     ) {
                         Text(
                             text = roomId,
-                            color = Color.White,
-                            fontSize = 22.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 4.sp
+                            letterSpacing = 4.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         IconButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
                                         as ClipboardManager
-                                clipboard.setPrimaryClip(
-                                    ClipData.newPlainText("Room Code", roomId)
-                                )
-                                showCopiedToast = true
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Room Code", roomId))
+                                showCopied = true
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "Copy Code",
-                                tint = Color(0xFF5865F2)
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
                     Text(
                         text = "Share this code with friends to join",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 11.sp
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                 }
             }
 
-            if (showCopiedToast) {
+            if (showCopied) {
                 Text(
                     text = "✅ Room code copied!",
-                    color = Color(0xFF43A047),
-                    fontSize = 13.sp
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium
                 )
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(2000)
-                    showCopiedToast = false
+                    showCopied = false
                 }
             }
 
             // ── Password Field ────────────────────────────────────────────────
-            Column {
-                Text(
-                    text = "Set Party Password",
-                    color = Color(0xFFAAAAAA),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = {
-                        password = it
-                        passwordError = ""
-                    },
-                    placeholder = { Text("Enter a password", color = Color(0xFF666666)) },
-                    leadingIcon = {
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    passwordError = ""
+                },
+                label = { Text("Set Party Password") },
+                placeholder = { Text("Min 4 characters") },
+                leadingIcon = {
+                    Icon(Icons.Default.Lock, contentDescription = null)
+                },
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
-                            Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = Color(0xFF5865F2)
+                            imageVector = if (passwordVisible)
+                                Icons.Default.VisibilityOff
+                            else
+                                Icons.Default.Visibility,
+                            contentDescription = null
                         )
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Default.VisibilityOff
-                                else
-                                    Icons.Default.Visibility,
-                                contentDescription = null,
-                                tint = Color(0xFFAAAAAA)
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF5865F2),
-                        unfocusedBorderColor = Color(0xFF333355),
-                        cursorColor = Color(0xFF5865F2)
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    isError = passwordError.isNotEmpty()
-                )
-                if (passwordError.isNotEmpty()) {
-                    Text(
-                        text = passwordError,
-                        color = Color(0xFFE53935),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    }
+                },
+                visualTransformation = if (passwordVisible)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                isError = passwordError.isNotEmpty(),
+                supportingText = {
+                    if (passwordError.isNotEmpty()) {
+                        Text(passwordError, color = MaterialTheme.colorScheme.error)
+                    }
                 }
-            }
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // ── Share Invite Button ───────────────────────────────────────────
+            // ── Share Button ─────────────────────────────────────────────────
             OutlinedButton(
                 onClick = {
                     if (password.length < 4) {
@@ -258,9 +224,7 @@ fun HostPartySetupScreen(
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5865F2)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF5865F2))
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
                     Icons.Default.Share,
@@ -278,9 +242,7 @@ fun HostPartySetupScreen(
                         passwordError = "Password must be at least 4 characters"
                         return@Button
                     }
-
                     isLoading = true
-
                     val roomData = hashMapOf(
                         "hostId" to userId,
                         "matchId" to matchId,
@@ -292,14 +254,12 @@ fun HostPartySetupScreen(
                         "createdAt" to FieldValue.serverTimestamp(),
                         "participants" to hashMapOf(userId to true)
                     )
-
                     firestore.collection("watch_parties")
                         .document(roomId)
                         .set(roomData)
                         .addOnSuccessListener {
                             isLoading = false
                             navController.navigate("party_room/$roomId") {
-                                // Remove setup screen from back stack
                                 popUpTo("host_setup/$matchId") { inclusive = true }
                             }
                         }
@@ -312,19 +272,17 @@ fun HostPartySetupScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5865F2)),
                 enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = "🎉 Start Watch Party",
-                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )

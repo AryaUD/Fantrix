@@ -40,18 +40,13 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class OnboardingStage {
-    SPLASH,
-    WELCOME,
-    LOGIN,
-    SIGN_UP
+    SPLASH, WELCOME, LOGIN, SIGN_UP
 }
 
 @Composable
@@ -67,24 +62,19 @@ fun OnboardingFlowScreen(navController: NavController) {
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var isGoogleLoading by remember { mutableStateOf(false) }
-
-    // ── Real-time field error states ──────────────────────────────────────────
     var emailError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ FIX 1: Check if user is already logged in during splash
-    // If logged in → skip onboarding, go straight to home (or profile completion)
+    // ✅ Auto-login: skip onboarding if already signed in
     LaunchedEffect(Unit) {
         delay(1800)
         val currentUser = auth.currentUser
         if (currentUser != null) {
-            // User is already logged in — skip to home
             checkUserProfileAndNavigate(currentUser.uid, navController)
         } else {
-            // Not logged in — show welcome screen
             stage = OnboardingStage.WELCOME
         }
     }
@@ -94,8 +84,6 @@ fun OnboardingFlowScreen(navController: NavController) {
         emailError = ""
         passwordError = ""
     }
-
-    /* ---------------- GOOGLE SIGN IN ---------------- */
 
     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id))
@@ -112,34 +100,30 @@ fun OnboardingFlowScreen(navController: NavController) {
             try {
                 val account = task.getResult(ApiException::class.java)!!
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-
                 isGoogleLoading = true
-
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { authResult ->
-                        isGoogleLoading = false
-
-                        if (authResult.isSuccessful) {
-                            val user = authResult.result?.user
-                            if (user != null) {
-                                if (authResult.result?.additionalUserInfo?.isNewUser == true) {
-                                    saveGoogleUserData(
-                                        user.uid,
-                                        user.displayName ?: "User",
-                                        user.email ?: "",
-                                        user.photoUrl?.toString() ?: ""
-                                    )
-                                }
-                                checkUserProfileAndNavigate(user.uid, navController)
-                            }
-                        } else {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    authResult.exception?.localizedMessage ?: "Google login failed"
+                auth.signInWithCredential(credential).addOnCompleteListener { authResult ->
+                    isGoogleLoading = false
+                    if (authResult.isSuccessful) {
+                        val user = authResult.result?.user
+                        if (user != null) {
+                            if (authResult.result?.additionalUserInfo?.isNewUser == true) {
+                                saveGoogleUserData(
+                                    user.uid,
+                                    user.displayName ?: "User",
+                                    user.email ?: "",
+                                    user.photoUrl?.toString() ?: ""
                                 )
                             }
+                            checkUserProfileAndNavigate(user.uid, navController)
+                        }
+                    } else {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(
+                                authResult.exception?.localizedMessage ?: "Google login failed"
+                            )
                         }
                     }
+                }
             } catch (e: Exception) {
                 isGoogleLoading = false
                 coroutineScope.launch {
@@ -148,8 +132,6 @@ fun OnboardingFlowScreen(navController: NavController) {
             }
         }
     }
-
-    /* ---------------- UI ---------------- */
 
     val fantrixOffsetY by animateDpAsState(
         targetValue = if (stage == OnboardingStage.SPLASH) 0.dp else (-120).dp,
@@ -161,20 +143,19 @@ fun OnboardingFlowScreen(navController: NavController) {
 
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
 
+            // Background image — keep as-is since it's the splash/welcome bg
             Image(
                 painter = painterResource(R.drawable.mainbg1),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-
             Box(Modifier.fillMaxSize().background(Color.Black.copy(0.45f)))
 
             Column(
                 Modifier.fillMaxSize().padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 Spacer(Modifier.height(260.dp))
 
                 Text(
@@ -185,25 +166,19 @@ fun OnboardingFlowScreen(navController: NavController) {
                     modifier = Modifier.offset(y = fantrixOffsetY)
                 )
 
-                /* ---------------- SPLASH ---------------- */
+                /* ── SPLASH ── */
                 AnimatedVisibility(stage == OnboardingStage.SPLASH) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
                     }
                 }
 
-                /* ---------------- WELCOME ---------------- */
+                /* ── WELCOME ── */
                 AnimatedVisibility(stage == OnboardingStage.WELCOME) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 200.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 200.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-
                         Text("Welcome", fontSize = 28.sp, color = Color.White)
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -211,7 +186,6 @@ fun OnboardingFlowScreen(navController: NavController) {
                             fontSize = 14.sp,
                             color = Color.White.copy(0.7f)
                         )
-
                         Spacer(Modifier.height(36.dp))
 
                         Button(
@@ -232,13 +206,10 @@ fun OnboardingFlowScreen(navController: NavController) {
 
                         Spacer(Modifier.height(24.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Divider(modifier = Modifier.weight(1f), color = Color.White.copy(0.3f))
-                            Text(" OR ", modifier = Modifier.padding(horizontal = 8.dp), color = Color.White)
-                            Divider(modifier = Modifier.weight(1f), color = Color.White.copy(0.3f))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Divider(Modifier.weight(1f), color = Color.White.copy(0.3f))
+                            Text(" OR ", Modifier.padding(horizontal = 8.dp), color = Color.White)
+                            Divider(Modifier.weight(1f), color = Color.White.copy(0.3f))
                         }
 
                         Spacer(Modifier.height(24.dp))
@@ -274,55 +245,44 @@ fun OnboardingFlowScreen(navController: NavController) {
                     }
                 }
 
-                /* ---------------- LOGIN / SIGN UP CARD ---------------- */
+                /* ── LOGIN / SIGN UP CARD ── */
+                // Card uses MaterialTheme automatically — matches app theme perfectly
                 AnimatedVisibility(stage == OnboardingStage.LOGIN || stage == OnboardingStage.SIGN_UP) {
-
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 20.dp)
-                            .imePadding(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 20.dp).imePadding(),
                         shape = RoundedCornerShape(26.dp)
+                        // No explicit colors — Card uses MaterialTheme.colorScheme.surface by default
                     ) {
                         Column(
-                            modifier = Modifier
-                                .verticalScroll(rememberScrollState())
-                                .padding(24.dp),
+                            modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-
                             Text(
                                 text = "← Back",
-                                modifier = Modifier
-                                    .align(Alignment.Start)
-                                    .clickable {
-                                        stage = OnboardingStage.WELCOME
-                                        email = ""
-                                        password = ""
-                                        passwordVisible = false
-                                        emailError = ""
-                                        passwordError = ""
-                                    }
+                                modifier = Modifier.align(Alignment.Start).clickable {
+                                    stage = OnboardingStage.WELCOME
+                                    email = ""; password = ""
+                                    passwordVisible = false
+                                    emailError = ""; passwordError = ""
+                                },
+                                color = MaterialTheme.colorScheme.primary
                             )
 
                             Spacer(Modifier.height(8.dp))
 
                             Text(
-                                text = if (stage == OnboardingStage.LOGIN)
-                                    "Login to your account"
-                                else
-                                    "Create a new account",
-                                fontSize = 22.sp
+                                text = if (stage == OnboardingStage.LOGIN) "Login to your account"
+                                else "Create a new account",
+                                style = MaterialTheme.typography.titleLarge
                             )
 
                             Spacer(Modifier.height(20.dp))
 
-                            // ── Email field ───────────────────────────────────
+                            // Email
                             OutlinedTextField(
                                 value = email,
                                 onValueChange = {
                                     email = it
-                                    // ✅ FIX 2: Validate email in real time
                                     emailError = when {
                                         it.isBlank() -> ""
                                         !android.util.Patterns.EMAIL_ADDRESS.matcher(it).matches() ->
@@ -336,27 +296,23 @@ fun OnboardingFlowScreen(navController: NavController) {
                                 singleLine = true,
                                 isError = emailError.isNotEmpty(),
                                 supportingText = {
-                                    if (emailError.isNotEmpty()) {
+                                    if (emailError.isNotEmpty())
                                         Text(emailError, color = MaterialTheme.colorScheme.error)
-                                    }
                                 }
                             )
 
                             Spacer(Modifier.height(14.dp))
 
-                            // ── Password field ────────────────────────────────
+                            // Password
                             OutlinedTextField(
                                 value = password,
                                 onValueChange = {
                                     password = it
-                                    // ✅ FIX 2: Validate password in real time
                                     passwordError = when {
                                         it.isBlank() -> ""
                                         it.length < 6 -> "Password must be at least 6 characters"
-                                        !it.any { c -> c.isDigit() } ->
-                                            "Password must contain at least one number"
-                                        !it.any { c -> c.isLetter() } ->
-                                            "Password must contain at least one letter"
+                                        !it.any { c -> c.isDigit() } -> "Must contain at least one number"
+                                        !it.any { c -> c.isLetter() } -> "Must contain at least one letter"
                                         else -> ""
                                     }
                                 },
@@ -366,14 +322,11 @@ fun OnboardingFlowScreen(navController: NavController) {
                                 singleLine = true,
                                 isError = passwordError.isNotEmpty(),
                                 supportingText = {
-                                    if (passwordError.isNotEmpty()) {
+                                    if (passwordError.isNotEmpty())
                                         Text(passwordError, color = MaterialTheme.colorScheme.error)
-                                    }
                                 },
                                 visualTransformation = if (passwordVisible)
-                                    VisualTransformation.None
-                                else
-                                    PasswordVisualTransformation(),
+                                    VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
                                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                         Icon(
@@ -385,69 +338,43 @@ fun OnboardingFlowScreen(navController: NavController) {
                                 }
                             )
 
-                            // Forgot password
                             if (stage == OnboardingStage.LOGIN) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(
                                     text = "Forgot password?",
-                                    modifier = Modifier
-                                        .align(Alignment.End)
-                                        .clickable {
-                                            if (email.isBlank()) {
+                                    modifier = Modifier.align(Alignment.End).clickable {
+                                        if (email.isBlank()) {
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar("Please enter your email first")
+                                            }
+                                        } else {
+                                            auth.sendPasswordResetEmail(email).addOnCompleteListener { task ->
                                                 coroutineScope.launch {
-                                                    snackbarHostState.showSnackbar("Please enter your email first")
+                                                    if (task.isSuccessful)
+                                                        snackbarHostState.showSnackbar("Reset email sent to $email")
+                                                    else
+                                                        snackbarHostState.showSnackbar(
+                                                            task.exception?.message ?: "Failed to send reset email"
+                                                        )
                                                 }
-                                            } else {
-                                                auth.sendPasswordResetEmail(email)
-                                                    .addOnCompleteListener { task ->
-                                                        coroutineScope.launch {
-                                                            if (task.isSuccessful) {
-                                                                snackbarHostState.showSnackbar("Password reset email sent to $email")
-                                                            } else {
-                                                                snackbarHostState.showSnackbar(
-                                                                    task.exception?.message ?: "Failed to send reset email"
-                                                                )
-                                                            }
-                                                        }
-                                                    }
                                             }
                                         }
-                                        .padding(top = 4.dp, end = 4.dp),
-                                    color = Color(0xFF2196F3),
+                                    }.padding(top = 4.dp, end = 4.dp),
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp
                                 )
                             }
 
                             Spacer(Modifier.height(22.dp))
 
-                            // ── Login / Sign Up button ────────────────────────
                             Button(
                                 onClick = {
-                                    // Final validation before calling Firebase
-                                    if (email.isBlank()) {
-                                        emailError = "Email cannot be empty"
-                                        return@Button
-                                    }
-                                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                                        emailError = "Enter a valid email address"
-                                        return@Button
-                                    }
-                                    if (password.isBlank()) {
-                                        passwordError = "Password cannot be empty"
-                                        return@Button
-                                    }
-                                    if (password.length < 6) {
-                                        passwordError = "Password must be at least 6 characters"
-                                        return@Button
-                                    }
-                                    if (!password.any { it.isDigit() }) {
-                                        passwordError = "Password must contain at least one number"
-                                        return@Button
-                                    }
-                                    if (!password.any { it.isLetter() }) {
-                                        passwordError = "Password must contain at least one letter"
-                                        return@Button
-                                    }
+                                    if (email.isBlank()) { emailError = "Email cannot be empty"; return@Button }
+                                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) { emailError = "Enter a valid email address"; return@Button }
+                                    if (password.isBlank()) { passwordError = "Password cannot be empty"; return@Button }
+                                    if (password.length < 6) { passwordError = "Password must be at least 6 characters"; return@Button }
+                                    if (!password.any { it.isDigit() }) { passwordError = "Must contain at least one number"; return@Button }
+                                    if (!password.any { it.isLetter() }) { passwordError = "Must contain at least one letter"; return@Button }
 
                                     isLoading = true
 
@@ -456,33 +383,24 @@ fun OnboardingFlowScreen(navController: NavController) {
                                             .addOnCompleteListener { task ->
                                                 isLoading = false
                                                 if (task.isSuccessful) {
-                                                    val user = task.result?.user
-                                                    if (user != null) {
-                                                        checkUserProfileAndNavigate(user.uid, navController)
+                                                    task.result?.user?.let {
+                                                        checkUserProfileAndNavigate(it.uid, navController)
                                                     }
                                                 } else {
-                                                    // ✅ Show specific Firebase error as toast
-                                                    val errorMessage = when {
-                                                        task.exception?.message?.contains("invalid-email", ignoreCase = true) == true ->
-                                                            "Invalid email address"
+                                                    val msg = when {
+                                                        task.exception?.message?.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) == true ->
+                                                            "Wrong email or password"
                                                         task.exception?.message?.contains("wrong-password", ignoreCase = true) == true ->
                                                             "Wrong password. Please try again"
-                                                        task.exception?.message?.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) == true ->
-                                                            "Wrong email or password. Please try again"
                                                         task.exception?.message?.contains("user-not-found", ignoreCase = true) == true ->
                                                             "No account found with this email"
                                                         task.exception?.message?.contains("too-many-requests", ignoreCase = true) == true ->
                                                             "Too many failed attempts. Try again later"
-                                                        task.exception?.message?.contains("user-disabled", ignoreCase = true) == true ->
-                                                            "This account has been disabled"
                                                         task.exception?.message?.contains("network", ignoreCase = true) == true ->
-                                                            "No internet connection. Check your network"
-                                                        else ->
-                                                            "Wrong email or password"
+                                                            "No internet connection"
+                                                        else -> "Wrong email or password"
                                                     }
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar(errorMessage)
-                                                    }
+                                                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
                                                 }
                                             }
                                     } else {
@@ -490,29 +408,23 @@ fun OnboardingFlowScreen(navController: NavController) {
                                             .addOnCompleteListener { task ->
                                                 isLoading = false
                                                 if (task.isSuccessful) {
-                                                    val user = task.result?.user
-                                                    if (user != null) {
-                                                        saveUserData(user.uid, email.split("@")[0], email, "")
+                                                    task.result?.user?.let {
+                                                        saveUserData(it.uid, email.split("@")[0], email, "")
                                                         navController.navigate("userDetails") {
                                                             popUpTo("onboarding") { inclusive = true }
                                                         }
                                                     }
                                                 } else {
-                                                    val errorMessage = when {
+                                                    val msg = when {
                                                         task.exception?.message?.contains("email-already-in-use", ignoreCase = true) == true ->
-                                                            "An account already exists with this email. Please login instead"
+                                                            "Account already exists. Please login instead"
                                                         task.exception?.message?.contains("weak-password", ignoreCase = true) == true ->
-                                                            "Password is too weak. Use at least 6 characters with letters and numbers"
-                                                        task.exception?.message?.contains("invalid-email", ignoreCase = true) == true ->
-                                                            "Invalid email address"
+                                                            "Password too weak. Use letters and numbers"
                                                         task.exception?.message?.contains("network", ignoreCase = true) == true ->
-                                                            "No internet connection. Check your network"
-                                                        else ->
-                                                            task.exception?.localizedMessage ?: "Signup failed"
+                                                            "No internet connection"
+                                                        else -> task.exception?.localizedMessage ?: "Signup failed"
                                                     }
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar(errorMessage)
-                                                    }
+                                                    coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
                                                 }
                                             }
                                     }
@@ -522,7 +434,7 @@ fun OnboardingFlowScreen(navController: NavController) {
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         strokeWidth = 2.dp,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -536,18 +448,14 @@ fun OnboardingFlowScreen(navController: NavController) {
                             Text(
                                 text = if (stage == OnboardingStage.LOGIN)
                                     "Don't have an account? Sign Up"
-                                else
-                                    "Already have an account? Login",
+                                else "Already have an account? Login",
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.clickable {
                                     stage = if (stage == OnboardingStage.LOGIN)
-                                        OnboardingStage.SIGN_UP
-                                    else
-                                        OnboardingStage.LOGIN
-                                    email = ""
-                                    password = ""
+                                        OnboardingStage.SIGN_UP else OnboardingStage.LOGIN
+                                    email = ""; password = ""
                                     passwordVisible = false
-                                    emailError = ""
-                                    passwordError = ""
+                                    emailError = ""; passwordError = ""
                                 }
                             )
 
@@ -561,44 +469,27 @@ fun OnboardingFlowScreen(navController: NavController) {
 }
 
 private fun checkUserProfileAndNavigate(userId: String, navController: NavController) {
-    val firestore = Firebase.firestore
-    firestore.collection("users").document(userId).get()
+    Firebase.firestore.collection("users").document(userId).get()
         .addOnSuccessListener { document ->
             if (document.exists() && document.getBoolean("profileCompleted") == true) {
-                navController.navigate("home") {
-                    popUpTo("onboarding") { inclusive = true }
-                }
+                navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
             } else {
-                navController.navigate("userDetails") {
-                    popUpTo("onboarding") { inclusive = true }
-                }
+                navController.navigate("userDetails") { popUpTo("onboarding") { inclusive = true } }
             }
         }
         .addOnFailureListener {
-            navController.navigate("userDetails") {
-                popUpTo("onboarding") { inclusive = true }
-            }
+            navController.navigate("userDetails") { popUpTo("onboarding") { inclusive = true } }
         }
 }
 
 private fun saveUserData(userId: String, username: String, email: String, profileImage: String) {
-    val firestore = Firebase.firestore
-    val userData = hashMapOf(
-        "fullName" to username,
-        "email" to email,
-        "profileImage" to profileImage,
-        "profileCompleted" to false
+    Firebase.firestore.collection("users").document(userId).set(
+        hashMapOf("fullName" to username, "email" to email, "profileImage" to profileImage, "profileCompleted" to false)
     )
-    firestore.collection("users").document(userId).set(userData)
 }
 
 private fun saveGoogleUserData(userId: String, username: String, email: String, profileImage: String) {
-    val firestore = Firebase.firestore
-    val userData = hashMapOf(
-        "fullName" to username,
-        "email" to email,
-        "profileImage" to profileImage,
-        "profileCompleted" to false
+    Firebase.firestore.collection("users").document(userId).set(
+        hashMapOf("fullName" to username, "email" to email, "profileImage" to profileImage, "profileCompleted" to false)
     )
-    firestore.collection("users").document(userId).set(userData)
 }

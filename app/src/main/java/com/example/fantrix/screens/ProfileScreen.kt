@@ -14,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,27 +38,20 @@ fun ProfileScreen(navController: NavController) {
     var preferredSport by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // Load user data
     LaunchedEffect(user?.uid) {
         if (user == null) return@LaunchedEffect
-
         try {
             isLoading = true
-
-            // Try multiple field names for username
             val doc = firestore.collection("users").document(user.uid).get().await()
-
             if (doc.exists()) {
-                // Check different possible field names for name
                 name = when {
                     doc.contains("fullName") -> doc.getString("fullName") ?: "User"
                     doc.contains("username") -> doc.getString("username") ?: "User"
                     doc.contains("name") -> doc.getString("name") ?: "User"
                     else -> user.displayName ?: "User"
                 }
-
-                // Check different possible field names for profile image
                 image = when {
                     doc.contains("profileImage") -> doc.getString("profileImage") ?: ""
                     doc.contains("profileImageUrl") -> doc.getString("profileImageUrl") ?: ""
@@ -67,24 +59,19 @@ fun ProfileScreen(navController: NavController) {
                     doc.contains("photoUrl") -> doc.getString("photoUrl") ?: ""
                     else -> ""
                 }
-
                 preferredSport = doc.getString("preferredSport") ?: ""
             } else {
-                // If no document exists, use Firebase Auth data
                 name = user.displayName ?: "User"
                 image = user.photoUrl?.toString() ?: ""
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            name = "User"
-            image = ""
-            preferredSport = ""
+            name = "User"; image = ""; preferredSport = ""
         } finally {
             isLoading = false
         }
     }
 
-    Scaffold(containerColor = Color(0xFFF4F6FA)) { padding ->
+    Scaffold { padding ->
 
         Column(
             modifier = Modifier
@@ -97,71 +84,52 @@ fun ProfileScreen(navController: NavController) {
                 text = "Profile",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                color = MaterialTheme.colorScheme.onBackground
             )
-
-            /* -------- Profile card -------- */
 
             if (isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                ) { CircularProgressIndicator() }
             } else {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(Color.White)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Profile Image
                         Image(
                             painter = rememberAsyncImagePainter(
-                                if (image.isNotBlank()) {
-                                    image
-                                } else {
-                                    R.drawable.default_avatar
-                                }
+                                if (image.isNotBlank()) image else R.drawable.default_avatar
                             ),
                             contentDescription = "Profile",
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape),
+                            modifier = Modifier.size(56.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
-
                         Spacer(Modifier.width(12.dp))
-
                         Column {
                             Text(
                                 text = name,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             if (preferredSport.isNotBlank()) {
                                 Text(
                                     text = preferredSport,
                                     fontSize = 13.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Text(
                                 text = "Tap to edit profile",
                                 fontSize = 12.sp,
-                                color = Color(0xFF2196F3),
-                                modifier = Modifier.clickable {
-                                    navController.navigate("edit_profile")
-                                }
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { navController.navigate("edit_profile") }
                             )
                         }
                     }
@@ -171,12 +139,8 @@ fun ProfileScreen(navController: NavController) {
             Spacer(Modifier.height(18.dp))
 
             SectionTitle("Account")
-            OptionItem(Icons.Default.Person, "Manage Profile") {
-                navController.navigate("edit_profile")
-            }
-            OptionItem(Icons.Default.Lock, "Password & Security") {
-                navController.navigate("security")
-            }
+            OptionItem(Icons.Default.Person, "Manage Profile") { navController.navigate("edit_profile") }
+            OptionItem(Icons.Default.Lock, "Password & Security") { navController.navigate("security") }
             OptionItem(Icons.Default.Notifications, "Notifications")
 
             Spacer(Modifier.height(12.dp))
@@ -189,11 +153,7 @@ fun ProfileScreen(navController: NavController) {
             ) {
                 ThemeManager.isDarkTheme.value = !ThemeManager.isDarkTheme.value
             }
-
-            OptionItem(Icons.Default.Language, "Language", "English") {
-                showLanguageDialog = true
-            }
-
+            OptionItem(Icons.Default.Language, "Language", "English") { showLanguageDialog = true }
             OptionItem(Icons.Default.Info, "About Us")
 
             Spacer(Modifier.height(16.dp))
@@ -203,22 +163,48 @@ fun ProfileScreen(navController: NavController) {
 
             Spacer(Modifier.height(28.dp))
 
+            // ✅ FIXED: Shows confirmation dialog before logout
             Button(
-                onClick = {
-                    FirebaseAuth.getInstance().signOut()
-                    navController.navigate("login") {
-                        popUpTo(0)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                onClick = { showLogoutDialog = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 20.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Text("Logout", color = Color.White)
+                Text("Logout", color = MaterialTheme.colorScheme.onError)
             }
         }
+    }
+
+    // ✅ Logout confirmation dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout") },
+            text = { Text("Are you sure you want to logout?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        FirebaseAuth.getInstance().signOut()
+                        // ✅ FIXED: Navigate to "onboarding" not "login", clear entire back stack
+                        navController.navigate("onboarding") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showLanguageDialog) {
@@ -233,7 +219,8 @@ fun ProfileScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { showLanguageDialog = false }
-                                .padding(12.dp)
+                                .padding(12.dp),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -243,14 +230,14 @@ fun ProfileScreen(navController: NavController) {
     }
 }
 
-/* ----------------- UI PARTS ----------------- */
+/* ── UI Parts ── */
 
 @Composable
 fun SectionTitle(title: String) {
     Text(
         text = title,
         fontSize = 13.sp,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 20.dp, bottom = 6.dp, top = 10.dp)
     )
 }
@@ -267,21 +254,29 @@ fun OptionItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(Color.White)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = title)
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.width(12.dp))
-            Text(title, modifier = Modifier.weight(1f), fontSize = 15.sp)
+            Text(
+                title,
+                modifier = Modifier.weight(1f),
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             if (value != null) {
-                Text(value, fontSize = 13.sp, color = Color.Gray)
+                Text(value, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(6.dp))
             }
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
+            Icon(
+                Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
